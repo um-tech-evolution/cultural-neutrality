@@ -8,27 +8,27 @@ end
 
 @doc """ function heterozygosity( p::Array{Int64,2}, gen::Int64 )
 
-Compute the empirical "heterozygosity" of a generation (i. e., row) of the allele matrix p which is returned by inf_alleles().
+Compute the empirical "heterozygosity" of a population of the array of populaitons returned by inf_alleles().
 A pair of haploid genotypes is heterozygous if the aleles differ, and homozygous if the alleles are the same
 Return the average heterozygoosity over all pairs of individuals.
 """
-function heterozygosity( p::Array{Int64,2}, gen::Int64 ) 
-  N = size(p,2)
+function heterozygosity( p, gen::Int64 ) 
+  N = length(p[gen])
   h = 0
   for i = 1:N
     for j = 1:N
-      if p[gen,i] == p[gen,j]
+      if i != j && p[gen][i] == p[gen][j]
         h += 1
       end
     end
   end
-  return float(h)/N^2
+  return float(h)/(N^2 - N)
 end
 
 @doc """ function heterozygosities( p::Array{Int64,2} )
 Return a vector of the heterozygosities of all generations of the allele matrix p.
 """
-function heterozygosities( p::Array{Int64,2} )
-  nrows = size(p,1)
+function heterozygosities( p)
+  nrows = length(p)
   [heterozygosity(p,j) for j = 1:nrows]
 end

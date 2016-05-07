@@ -29,7 +29,8 @@ context("infinite_alleles.jl") do
     C = 1.0
     mu = 0.0
     max  = maximum(lst)
-    clst = conformist_copy( lst, mu, K, C )
+    new_id = max+1
+    clst, new_id = conformist_copy( lst, mu, K, C, new_id )
     @fact length(clst) --> lst_length
     for i in 1:length(clst)
       if lst[i] in toplist

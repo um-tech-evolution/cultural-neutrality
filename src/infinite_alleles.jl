@@ -24,9 +24,11 @@ function inf_alleles( N::Int64, mu::Float64, ngens::Int64; copy_funct::Function=
   new_id = N+1
   for g = 2:(ngens+burn_in)
     if K == 0 && C == 0.0 
-      push!( result, copy_funct( result[g-1], mu) )
+      new_pop, new_id = copy_funct( result[g-1], mu, new_id )
+      push!( result, new_pop )
     elseif K > 0 && C > 0.0 
-      push!( result, copy_funct( result[g-1], mu, K, C ) )
+      new_pop, new_id = copy_funct( result[g-1], mu, K, C, new_id )
+      push!( result, new_pop  )
     else
       error("illegal copy_funct")
     end
@@ -34,8 +36,7 @@ function inf_alleles( N::Int64, mu::Float64, ngens::Int64; copy_funct::Function=
   result[burn_in+1:end]
 end
 
-function neutral_copy( lst::Vector{Int64}, mu::Float64 )
-  new_id = maximum(lst)+1   # TODO:  add to argument list since this method can lead to subtle bugs.
+function neutral_copy( lst::Vector{Int64}, mu::Float64, new_id::Int64 )
   N = length(lst)
   p = zeros(Int64,N)
   for i = 1:N
@@ -46,7 +47,7 @@ function neutral_copy( lst::Vector{Int64}, mu::Float64 )
       p[i] = lst[rand(1:N)]
     end
   end
-  return p
+  return p, new_id
 end
 
 @doc """ function topKlist( lst::Vector{Int64}, K::Int64 )
@@ -72,9 +73,9 @@ C   is the probability of a conformist copy from the top K list
 1-C  is the probability of a ranomd copy
 returns  a list of N integers.
 """
-function conformist_copy( lst::Vector{Int64}, mu::Float64, K::Int64, C::Float64 )
+function conformist_copy( lst::Vector{Int64}, mu::Float64, K::Int64, C::Float64, new_id::Int64 )
   N = length(lst)
-  new_id = maximum(lst)+1   # TODO:  add to argument list since this method can lead to subtle bugs.
+  #new_id = maximum(lst)+1   # TODO:  add to argument list since this method can lead to subtle bugs.
   result = zeros(Int64,N)
   topK = topKlist( lst, K )
   for i = 1:N
@@ -91,7 +92,7 @@ function conformist_copy( lst::Vector{Int64}, mu::Float64, K::Int64, C::Float64 
       result[i] = lst[rand(1:N)]
     end
   end
-  result
+  result, new_id
 end
 
 @doc """ function anti_conformist_copy( lst::Vector{Int64}, mu::Float64, K::Int64, C::Float64 )
@@ -104,9 +105,9 @@ C   is the probability of a conformist copy from the top K list
 1-C  is the probability of a ranomd copy
 returns  a list of N integers.
 """
-function anti_conformist_copy( lst::Vector{Int64}, mu::Float64, K::Int64, C::Float64 )
+function anti_conformist_copy( lst::Vector{Int64}, mu::Float64, K::Int64, C::Float64, new_id::Int64 )
   N = length(lst)
-  new_id = maximum(lst)+1   # TODO:  add to argument list since this method can lead to subtle bugs.
+  #new_id = maximum(lst)+1   # TODO:  add to argument list since this method can lead to subtle bugs.
   result = zeros(Int64,N)
   topK = topKlist( lst, K )
   for i = 1:N
@@ -123,7 +124,7 @@ function anti_conformist_copy( lst::Vector{Int64}, mu::Float64, K::Int64, C::Flo
       result[i] = lst[rand(1:N)]
     end
   end
-  result
+  result, new_id
 end
 
 
