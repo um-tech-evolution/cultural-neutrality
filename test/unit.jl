@@ -1,7 +1,6 @@
 using FactCheck
 
-#include("../src/infinite_alleles.jl")
-
 facts("cultural_neutrality") do
-  include("infinite_alleles.jl")
+  include("poplist.jl")
+  include("conformist_poplist.jl")
 end
