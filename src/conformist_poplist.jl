@@ -1,6 +1,19 @@
 using DataStructures
+# TODO:  put these type aliases in a separate file
 typealias Population Array{Int64,1}
 typealias PopList Array{Population,1}
+
+@doc """funcction power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0 )
+
+N:      population size
+mu:     mutation rate
+ngens:  number of Populations in returned list
+Return a Population list using the power conformist copying method.
+If  conformist_power == 0.0,  neutral, i. e., neither conformity nor anti-conformity
+    conformist_power > 0.0,  conformist:  more likely to choose more frequent alleles from the previous generation
+    conformist_power < 0.0,  anti-conformist:  more likely to choose less frequent alleles from the previous generation
+See the documentation and code of function freq_scaled_fitness() for more details.
+"""
 
 function power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0 )
   poplist= Population[ collect(1:N) ]
@@ -18,6 +31,17 @@ function power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in:
   end
   poplist[burn_in+1:end]
 end
+
+@doc """ function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0 )
+
+Return a Population list using the conformist copying method described in
+"Biases in cultural transmission shape the turnover of popular traits" by Acerbi and Bentley
+in Evolution and Human Behavior 35 (2014) 228–236.
+mu  is the mutation rate, i. e., probablity of a new integer allele 
+C   is the probability of a conformist copy from the top K list
+1-C  is the probability of a random copy
+K   is the size of the top K list to use.
+"""
 
 function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0 )
   poplist= Population[ collect(1:N) ]
