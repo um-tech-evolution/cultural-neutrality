@@ -15,9 +15,15 @@ If  conformist_power == 0.0,  neutral, i. e., neither conformity nor anti-confor
 See the documentation and code of function freq_scaled_fitness() for more details.
 """
 
-function power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0 )
-  poplist= Population[ collect(1:N) ]
-  new_id = N+1
+function power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0,
+    uniform_start::Bool=false )
+  if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
+    poplist= Population[ Int64[1 for i = 1:N] ]
+    new_id = 2
+  else
+    poplist= Population[ collect(1:N) ]
+    new_id = N+1
+  end
   for g = 2:(ngens+burn_in)
     fitness = freq_scaled_fitness( poplist[g-1], conformist_power )
     new_pop = propsel( poplist[g-1], fitness )
@@ -43,9 +49,15 @@ C   is the probability of a conformist copy from the top K list
 K   is the size of the top K list to use.
 """
 
-function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0 )
-  poplist= Population[ collect(1:N) ]
-  new_id = N+1
+function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0,
+    uniform_start::Bool=false )
+  if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
+    poplist= Population[ Int64[1 for i = 1:N] ]
+    new_id = 2
+  else
+    poplist= Population[ collect(1:N) ]
+    new_id = N+1
+  end
   for g = 2:(ngens+burn_in)
     result = zeros(Int64,N)
     topK = topKlist( poplist[g-1], K )
@@ -68,9 +80,15 @@ function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int6
   poplist[burn_in+1:end]
 end
 
-function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0 )
-  poplist= Population[ collect(1:N) ]
-  new_id = N+1
+function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0,
+    uniform_start::Bool=false )
+  if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
+    poplist= Population[ Int64[1 for i = 1:N] ]
+    new_id = 2
+  else
+    poplist= Population[ collect(1:N) ]
+    new_id = N+1
+  end
   for g = 2:(ngens+burn_in)
     result = zeros(Int64,N)
     topK = topKlist( poplist[g-1], K )
