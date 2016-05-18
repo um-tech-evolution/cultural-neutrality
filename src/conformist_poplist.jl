@@ -1,9 +1,47 @@
 using DataStructures
 # TODO:  put these type aliases in a separate file
-typealias Population Array{Int64,1}
-typealias PopList Array{Population,1}
 
-@doc """funcction power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0 )
+export topKlist, topKset, turnover, power_conformist_poplist, acerbi_conformist_poplist, acerbi_anti_conformist_poplist
+
+
+@doc """ function topKlist( pop::Population, K::Int64 )
+
+Return the list of the K most frequent elements of pop.
+""" 
+function topKlist( pop::Population, K::Int64 )
+  c = counter(Int64)
+  for x in pop
+    push!(c,x)
+  end
+  result = sort( unique(pop), by=x->c[x], rev=true )
+  result[1:min(K,length(result))]
+end
+
+@doc """ function topKset( pop::Population, K::Int64 )
+
+Return the setof the K most frequent elements of pop.
+""" 
+function topKset( pop::Population, K::Int64 )
+  Set(topKlist( pop, K ))
+end
+
+@doc """ function turnover( pop1::Population, pop2::Population, K::Int64 )
+
+The number of alleles entering the toplist plus the number of alleles leaving the toplist
+   in the transition from pop1 to pop1.
+This is the defintion of Evans and Giametto rather than the definition of Bentley.
+Usually, this value is twice Bentley's value.
+The exception is when the toplist has less than K elements and an allele leaves without being replaced.
+"""
+
+function turnover( pop1::Population, pop2::Population, K::Int64 )
+  toplist1 = topKset( pop1, K )
+  toplist2 = topKset( pop2, K )
+  length(setdiff( toplist1, toplist2 )) + length(setdiff( toplist2, toplist1 ))
+end
+
+
+@doc """funcction power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0 )
 
 N:      population size
 mu:     mutation rate
@@ -15,7 +53,7 @@ If  conformist_power == 0.0,  neutral, i. e., neither conformity nor anti-confor
 See the documentation and code of function freq_scaled_fitness() for more details.
 """
 
-function power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0,
+function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0,
     uniform_start::Bool=false )
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
@@ -24,8 +62,9 @@ function power_confirmist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in:
     poplist= Population[ collect(1:N) ]
     new_id = N+1
   end
+  w = fill(1.0,N)
   for g = 2:(ngens+burn_in)
-    fitness = freq_scaled_fitness( poplist[g-1], conformist_power )
+    fitness = freq_scaled_fitness( poplist[g-1], w, conformist_power )
     new_pop = propsel( poplist[g-1], fitness )
     for i in 1:N
       if rand() < mu
@@ -111,4 +150,4 @@ function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K:
   poplist[burn_in+1:end]
 end
 
-
+# TODO:  Check if Kandler's model of conformity agrees with Acerbi's.

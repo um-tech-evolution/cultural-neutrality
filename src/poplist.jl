@@ -2,13 +2,13 @@
 Simulate the infinite alleles model (which is the Wright-Fisher model with infinite alleles mutation).
 This is a single locus model.  Haploidy is assumed---which means that genotypes are not in diploid pairs.
 =#
+export neutral_poplist, pop_counts, poplist_counts
 
 using DataStructures
-using DataFrames
-typealias Population Array{Int64,1}
-typealias PopList Array{Array{Int64,1},1}
+#using DataFrames
 
-@doc """ function inf_alleles( N::Int64, mu::Float64, ngens::Int64, burn_in::Int64=200 )
+@doc """ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, uniform_start::Bool=false,
+    popsize_ratio::Float64=1.0 )
 
 Run the infinite alleles model as a simulation. This is a 1-locus model.
 Allele values are represented by positive integers, and populations are list of positive integers.
@@ -35,7 +35,7 @@ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0,
     previous_popsize = popsize
     popsize = (popsize_ratio == 1.0) ? N : max(1,Int(round(N*popsize_ratio^(g-1))))
     current_mu = (popsize_ratio == 1.0) ? mu : min(1.0, mu/popsize_ratio^(g-1))
-    println("g: ",g,"  popsize: ",popsize,"  current mu: ",current_mu)
+    #println("g: ",g,"  popsize: ",popsize,"  current mu: ",current_mu)
     result = zeros(Int64,popsize)
     for i = 1:popsize
       if rand() < current_mu
@@ -50,43 +50,6 @@ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0,
   poplist[burn_in+1:end]
 end
 
-
-@doc """ function topKlist( pop::Population, K::Int64 )
-
-Return the list of the K most frequent elements of pop.
-""" 
-function topKlist( pop::Population, K::Int64 )
-  c = counter(Int64)
-  for x in pop
-    push!(c,x)
-  end
-  result = sort( unique(pop), by=x->c[x], rev=true )
-  result[1:min(K,length(result))]
-end
-
-@doc """ function topKset( pop::Population, K::Int64 )
-
-Return the setof the K most frequent elements of pop.
-""" 
-function topKset( pop::Population, K::Int64 )
-  Set(topKlist( pop, K ))
-end
-
-@doc """ function turnover( pop1::Population, pop2::Population, K::Int64 )
-
-The number of alleles entering the toplist plus the number of alleles leaving the toplist
-   in the transition from pop1 to pop1.
-This is the defintion of Evans and Giametto rather than the definition of Bentley.
-Usually, this value is twice Bentley's value.
-The exception is when the toplist has less than K elements and an allele leaves without being replaced.
-"""
-
-function turnover( pop1::Population, pop2::Population, K::Int64 )
-  toplist1 = topKset( pop1, K )
-  toplist2 = topKset( pop2, K )
-  length(setdiff( toplist1, toplist2 )) + length(setdiff( toplist2, toplist1 ))
-end
-
 @doc """ function pop_counts( pop::Population )
 
 Returns the sorted frequencies of the alleles of Population pop.
@@ -95,9 +58,9 @@ Example:  If pop = [5, 7, 9, 5, 4, 5, 7], then the returned list is [3, 2, 1, 1]
    list is the length of the population.
 """
 function pop_counts( pop::Population )
-  c = counter(Int64)
+  c = Dict{Int64,Int32}()
   for x in pop
-    push!(c,x)
+    c[x] = get( c, x, 0 ) + 1
   end
   map( x->c[x], sort( unique(pop), by=x->c[x], rev=true ) )
 end
