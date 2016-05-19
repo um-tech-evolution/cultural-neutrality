@@ -1,10 +1,10 @@
 module NeutralCulturalEvolution
-include("../src/aliases.jl")
-include("../src/poplist.jl")
-include("../src/conformist_poplist.jl")
-include("../src/freq_scaled_fitness.jl")
-include("../src/slatkin.jl")
+include("aliases.jl")
+include("poplist.jl")
+include("conformist_poplist.jl")
+include("freq_scaled_fitness.jl")
+include("slatkin.jl")
 
 end
 
-using NeutralCulturalEvolution
+#using NeutralCulturalEvolution
