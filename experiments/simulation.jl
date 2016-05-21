@@ -3,7 +3,7 @@
 include("../src/NeutralCulturalEvolution.jl")
 @everywhere using NeutralCulturalEvolution
 
-#=  Moved to the file  run_simulation.jl
+#=  Moved to the file:  run_simulation.jl
 if length(ARGS) == 0
   simname = "../experiments/configs/example"
 else
@@ -20,6 +20,7 @@ function writeheader(stream)
     "# mu_list=$(mu_list)",
     "# ngens=$(ngens)",
     "# burn_in=$(burn_in)",
+    "# slat_reps=$(slat_reps)",
   ], "\n"), "\n")
   line = join([
     "trial",
@@ -42,12 +43,12 @@ function writerow(stream, trial, mu, prob, theta )
   #println("line: ",line)
 end
 
-function run_trial( N, mu, ngens, burn_in )
-  r = ewens_montecarlo(Int32(100000),pop_counts(neutral_poplist(N,mu,ngens, burn_in=burn_in )[ngens]))
+function run_trial( N, mu, ngens, burn_in, slat_reps )
+  r = ewens_montecarlo(Int32(slat_reps),pop_counts(neutral_poplist(N,mu,ngens, burn_in=burn_in )[ngens]))
   (mu, r.probability, r.theta_estimate)
 end
 
-function run_simulation(simname::AbstractString, T, N, mu_list, ngens, burn_in )
+function run_simulation(simname::AbstractString, T::Int64, N::Int64, mu_list::Vector{Float64}, ngens::Int64, slat_reps::Int64,  burn_in::Int64 )
   #uprogress = PM.Progress(T, 1, "Running...", 40)
   stream = open("$(simname).csv", "w")
   writeheader(stream)
@@ -55,7 +56,7 @@ function run_simulation(simname::AbstractString, T, N, mu_list, ngens, burn_in )
   for mu in mu_list
     trial_list = vcat(trial_list,fill(mu,T))
   end
-  trials = pmap(mu->run_trial( N, mu, ngens, burn_in ), trial_list )
+  trials = pmap(mu->run_trial( N, mu, ngens, burn_in, slat_reps ), trial_list )
   #println("trials: ",trials)
   t = 1
   for trial in trials
