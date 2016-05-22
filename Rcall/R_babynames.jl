@@ -1,4 +1,5 @@
 # The R library "poweRlaw" must be R installed on the machine where this is run.
+# Author:  David Blasen with modifications by Alden Wright
 using RCall
 using DataFrames
 R"library(poweRlaw)"
