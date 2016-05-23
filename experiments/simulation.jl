@@ -16,7 +16,7 @@ end
 function writeheader(stream)
   write(stream, join([
     "# trials=$(T)",
-    "# N=$(N)",
+    "# N_list=$(N_list)",
     "# mu_list=$(mu_list)",
     "# ngens=$(ngens)",
     "# burn_in=$(burn_in)",
@@ -24,17 +24,19 @@ function writeheader(stream)
   ], "\n"), "\n")
   line = join([
     "trial",
-    "mu",
+    "N",
+    "N_mu",
     "prob",
     "theta",
   ], ",")
   write(stream, line, "\n")
 end
 
-function writerow(stream, trial, mu, prob, theta )
+function writerow(stream, trial, N, mu, prob, theta )
   #println("trial: ",trial)
   line = join(Any[
     trial,
+    N,
     mu,
     prob,
     theta
@@ -44,23 +46,32 @@ function writerow(stream, trial, mu, prob, theta )
 end
 
 function run_trial( N, mu, ngens, burn_in, slat_reps )
-  r = ewens_montecarlo(Int32(slat_reps),pop_counts(neutral_poplist(N,mu,ngens, burn_in=burn_in )[ngens]))
-  (mu, r.probability, r.theta_estimate)
+  r = ewens_montecarlo(Int32(slat_reps),pop_counts(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
+  (N, mu, r.probability, r.theta_estimate)
 end
 
-function run_simulation(simname::AbstractString, T::Int64, N::Int64, mu_list::Vector{Float64}, ngens::Int64, slat_reps::Int64,  burn_in::Int64 )
+function run_simulation(simname::AbstractString, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
+    ngens::Int64, burn_in::Float64, slat_reps::Int64 )
   #uprogress = PM.Progress(T, 1, "Running...", 40)
+  #println("rs burn_in: ",burn_in)
   stream = open("$(simname).csv", "w")
   writeheader(stream)
-  trial_list = Float64[]
-  for mu in mu_list
-    trial_list = vcat(trial_list,fill(mu,T))
+  N_mu_list = Tuple{Int64,Float64}[]
+  for N in N_list
+    for mu in mu_list
+      push!(N_mu_list,(N,mu))
+    end
   end
-  trials = pmap(mu->run_trial( N, mu, ngens, burn_in, slat_reps ), trial_list )
+  trial_list = N_mu_list
+  for t in 1:(T-1)
+    trial_list = vcat(trial_list,N_mu_list)
+  end
+  #println("trial list: ",trial_list)
+  trials = pmap(tr->run_trial( tr[1], tr[2], ngens, burn_in, slat_reps ), trial_list )
   #println("trials: ",trials)
   t = 1
   for trial in trials
-    writerow(stream,t, trial[1],trial[2],trial[3] )
+    writerow(stream, t, trial[1],trial[2],trial[3],trial[4] ) #trial[1]:N,  trial[2]:mu, trial[3]:r.probability
     flush(stream)
     t += 1
   end

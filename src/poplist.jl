@@ -7,7 +7,7 @@ export neutral_poplist, pop_counts, poplist_counts
 using DataStructures
 #using DataFrames
 
-@doc """ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, uniform_start::Bool=false,
+@doc """ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=N, uniform_start::Bool=false,
     popsize_ratio::Float64=1.0 )
 
 Run the infinite alleles model as a simulation. This is a 1-locus model.
@@ -16,13 +16,14 @@ The result is a list of Populations, one per generation.
 N is the population size, or the initial population size if popsize_ratio != 1.0 (see below)  
 mu is the mutation rate, or the initial mutation rate if popsize_ratio != 1.0 (see below)
 ngens is the number of generations.
-burn_in is a number of generations of "burn in": these generations are not part of the returned matrix
-   and are not counted in ngens.
+burn_in specifies the number of generations of "burn" in as a multiple of N (1.0 means 1.0*N generations of burn in): 
+    these generations are not part of the returned matrix and are not counted in ngens.
 uniform_start == true means that the inital population is all ones.
 popsize_ratio != 1.0 means that the popsize grows (or shrinks) geometrically with this ratio.
 """
-function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, uniform_start::Bool=false,
+function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=1.0, uniform_start::Bool=false,
     popsize_ratio::Float64=1.0 )
+  int_burn_in = Int(round(N*burn_in))
   if uniform_start  # All allele values start with the same value.  Start with a bottleneck.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
@@ -31,7 +32,7 @@ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0,
     new_id = N+1
   end
   popsize = N
-  for g = 2:(ngens+burn_in)
+  for g = 2:(ngens+int_burn_in)
     previous_popsize = popsize
     popsize = (popsize_ratio == 1.0) ? N : max(1,Int(round(N*popsize_ratio^(g-1))))
     current_mu = (popsize_ratio == 1.0) ? mu : min(1.0, mu/popsize_ratio^(g-1))
@@ -47,7 +48,7 @@ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0,
     end
     push!(poplist,result)
   end
-  poplist[burn_in+1:end]
+  poplist[int_burn_in+1:end]
 end
 
 @doc """ function pop_counts( pop::Population )
