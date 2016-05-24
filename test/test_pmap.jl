@@ -17,5 +17,5 @@ function test_pmap(n::Int64)
 end
 
 function test_pmap( N, mu, ngens )
-  pmap(i->ewens_montecarlo(Int32(100000),pop_counts(neutral_poplist(N,mu,ngens)[ngens])),collect(1:10))
+  pmap(i->ewens_montecarlo(Int32(100000),pop_counts32(neutral_poplist(N,mu,ngens)[ngens])),collect(1:10))
 end

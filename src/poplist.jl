@@ -2,7 +2,7 @@
 Simulate the infinite alleles model (which is the Wright-Fisher model with infinite alleles mutation).
 This is a single locus model.  Haploidy is assumed---which means that genotypes are not in diploid pairs.
 =#
-export neutral_poplist, pop_counts, poplist_counts
+export neutral_poplist, pop_counts32,  pop_counts64, poplist_counts32, poplist_counts64
 
 using DataStructures
 #using DataFrames
@@ -81,14 +81,26 @@ function pop_counts64( pop::Population )
   map( x->c[x], sort( unique(pop), by=x->c[x], rev=true ) )
 end
 
-@doc """ function poplist_counts( poplst::PopList )
+@doc """ function poplist_counts32( poplst::PopList )
 
 Returns the sorted frequencies of the combined populations of poplist.
 """
-function poplist_counts( poplst::PopList )
+function poplist_counts32( poplst::PopList )
   combined_pop = Int64[]
   for pop in poplst
     combined_pop = vcat(combined_pop,pop)
   end
-  pop_counts( combined_pop )
+  pop_counts32( combined_pop )
+end
+
+@doc """ function poplist_counts64( poplst::PopList )
+
+Returns the sorted frequencies of the combined populations of poplist.
+"""
+function poplist_counts64( poplst::PopList )
+  combined_pop = Int64[]
+  for pop in poplst
+    combined_pop = vcat(combined_pop,pop)
+  end
+  pop_counts64( combined_pop )
 end
