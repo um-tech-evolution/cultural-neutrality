@@ -53,8 +53,9 @@ If  conformist_power == 0.0,  neutral, i. e., neither conformity nor anti-confor
 See the documentation and code of function freq_scaled_fitness() for more details.
 """
 
-function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0,
+function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=1.0, conformist_power::Float64=0.0,
     uniform_start::Bool=false )
+  int_burn_in = Int(round(N*burn_in))
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
@@ -63,7 +64,7 @@ function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in:
     new_id = N+1
   end
   w = fill(1.0,N)
-  for g = 2:(ngens+burn_in)
+  for g = 2:(ngens+int_burn_in)
     fitness = freq_scaled_fitness( poplist[g-1], w, conformist_power )
     new_pop = propsel( poplist[g-1], fitness )
     for i in 1:N
@@ -74,7 +75,7 @@ function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in:
     end
     push!( poplist, new_pop )
   end
-  poplist[burn_in+1:end]
+  poplist[int_burn_in+1:end]
 end
 
 @doc """ function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0 )
@@ -88,8 +89,9 @@ C   is the probability of a conformist copy from the top K list
 K   is the size of the top K list to use.
 """
 
-function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0,
+function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Float64=1.0,
     uniform_start::Bool=false )
+  int_burn_in = Int(round(N*burn_in))
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
@@ -97,7 +99,7 @@ function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int6
     poplist= Population[ collect(1:N) ]
     new_id = N+1
   end
-  for g = 2:(ngens+burn_in)
+  for g = 2:(ngens+int_burn_in)
     result = zeros(Int64,N)
     topK = topKlist( poplist[g-1], K )
     for i = 1:N
@@ -116,7 +118,7 @@ function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int6
     end
     push!( poplist, result )
   end
-  poplist[burn_in+1:end]
+  poplist[int_burn_in+1:end]
 end
 
 function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, K::Int64, C::Float64; burn_in::Int64=0,

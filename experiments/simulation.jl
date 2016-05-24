@@ -46,7 +46,7 @@ function writerow(stream, trial, N, mu, prob, theta )
 end
 
 function run_trial( N, mu, ngens, burn_in, slat_reps )
-  r = ewens_montecarlo(Int32(slat_reps),pop_counts(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
+  r = ewens_montecarlo(Int32(slat_reps),pop_counts32(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
   (N, mu, r.probability, r.theta_estimate)
 end
 

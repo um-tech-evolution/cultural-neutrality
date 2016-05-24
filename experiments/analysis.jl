@@ -13,7 +13,7 @@ include("$(simname).jl")
 
 
 function slatkin_prob_results( df )
-  result_df = by(df, [:N, symbol("N_mu")] ) do d
+  result_df = by(df, [:N_mu, :N ] ) do d
     DataFrame(
       mean_prob=mean(d[:prob]),
       median_prob=median(d[:prob]),
@@ -29,7 +29,7 @@ function slatkin_prob_results( df )
 end
 
 function slatkin_theta_results( df )
-  result_df = by(df, [:N, symbol("N_mu")] ) do d
+  result_df = by(df, [:N_mu, :N ] ) do d
     DataFrame(
       mean_theta=mean(d[:theta]),
       median_theta=median(d[:theta]),

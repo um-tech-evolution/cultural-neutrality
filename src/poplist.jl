@@ -51,15 +51,30 @@ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=
   poplist[int_burn_in+1:end]
 end
 
-@doc """ function pop_counts( pop::Population )
+@doc """ function pop_counts32( pop::Population )
 
 Returns the sorted frequencies of the alleles of Population pop.
 Example:  If pop = [5, 7, 9, 5, 4, 5, 7], then the returned list is [3, 2, 1, 1]
    because there are 3 5's, 2 7's, 1 9, and 1 4.  So the sum of the returned 
    list is the length of the population.
 """
-function pop_counts( pop::Population )
+function pop_counts32( pop::Population )
   c = Dict{Int64,Int32}()
+  for x in pop
+    c[x] = get( c, x, 0 ) + 1
+  end
+  map( x->c[x], sort( unique(pop), by=x->c[x], rev=true ) )
+end
+
+@doc """ function pop_counts64( pop::Population )
+
+Returns the sorted frequencies of the alleles of Population pop.
+Example:  If pop = [5, 7, 9, 5, 4, 5, 7], then the returned list is [3, 2, 1, 1]
+   because there are 3 5's, 2 7's, 1 9, and 1 4.  So the sum of the returned 
+   list is the length of the population.
+"""
+function pop_counts64( pop::Population )
+  c = Dict{Int64,Int64}()
   for x in pop
     c[x] = get( c, x, 0 ) + 1
   end
