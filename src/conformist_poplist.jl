@@ -55,6 +55,7 @@ See the documentation and code of function freq_scaled_fitness() for more detail
 
 function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=1.0, conformist_power::Float64=0.0,
     uniform_start::Bool=false )
+  println("conformist power: ",conformist_power)
   int_burn_in = Int(round(N*burn_in))
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
