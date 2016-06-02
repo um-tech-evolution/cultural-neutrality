@@ -45,9 +45,14 @@ function writerow(stream, trial, N, mu, prob, theta )
   #println("line: ",line)
 end
 
-function run_trial( N, mu, ngens, burn_in, slat_reps )
+function run_trial_slatkin( N, mu, ngens, burn_in, slat_reps )
   r = ewens_montecarlo(Int32(slat_reps),pop_counts32(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
   (N, mu, r.probability, r.theta_estimate)
+end
+
+function run_trial_watterson( N, mu, ngens, burn_in )
+  theta_estimate = watterson(pop_counts64(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
+  (N, mu, 0, theta_estimate)
 end
 
 function run_simulation(simname::AbstractString, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
@@ -67,7 +72,11 @@ function run_simulation(simname::AbstractString, T::Int64, N_list::Vector{Int64}
     trial_list = vcat(trial_list,N_mu_list)
   end
   #println("trial list: ",trial_list)
-  trials = pmap(tr->run_trial( tr[1], tr[2], ngens, burn_in, slat_reps ), trial_list )
+  if slat_reps == 0
+    trials = pmap(tr->run_trial_watterson( tr[1], tr[2], ngens, burn_in ), trial_list )
+  else
+    trials = pmap(tr->run_trial_slatkin( tr[1], tr[2], ngens, burn_in, slat_reps ), trial_list )
+  end
   #println("trials: ",trials)
   t = 1
   for trial in trials
