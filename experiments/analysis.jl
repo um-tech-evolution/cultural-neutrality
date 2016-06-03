@@ -28,17 +28,35 @@ function slatkin_prob_results( df )
   result_df
 end
 
-function slatkin_theta_results( df )
+function theta_results( df )
   result_df = by(df, [:N_mu, :N ] ) do d
     DataFrame(
-      mean_theta=mean(d[:theta]),
-      median_theta=median(d[:theta]),
-      q01 = quantile(d[:theta],0.01),
-      q025= quantile(d[:theta],0.025),
-      q05 = quantile(d[:theta],0.05),
-      q95 = quantile(d[:theta],0.95),
-      q975 = quantile(d[:theta],0.975),
-      q99 = quantile(d[:theta],0.99)
+      mean_theta=mean(d[:est_theta]),
+      median_theta=median(d[:est_theta]),
+      true_theta= d[:true_theta][1],
+      #q01 = quantile(d[:est_theta],0.01),
+      #q025= quantile(d[:est_theta],0.025),
+      #q05 = quantile(d[:est_theta],0.05),
+      #q95 = quantile(d[:est_theta],0.95),
+      #q975 = quantile(d[:est_theta],0.975),
+      #q99 = quantile(d[:est_theta],0.99)
+    )
+  end
+  result_df
+end
+
+function K_results( df )
+  result_df = by(df, [:N_mu, :N ] ) do d
+    DataFrame(
+      mean_K_est=mean(d[:K]),
+      median_K_est=median(d[:K]),
+      true_theta= d[:true_theta][1],
+      #q01 = quantile(d[:est_theta],0.01),
+      #q025= quantile(d[:est_theta],0.025),
+      #q05 = quantile(d[:est_theta],0.05),
+      #q95 = quantile(d[:est_theta],0.95),
+      #q975 = quantile(d[:est_theta],0.975),
+      #q99 = quantile(d[:est_theta],0.99)
     )
   end
   result_df
@@ -62,14 +80,23 @@ end
 
 df = readtable("$(simname).csv", makefactors=true, allowcomments=true)
 #println("df: ",df)
-if slat_reps != 0
+if slat_reps > 0
   spdf = slatkin_prob_results( df )
   println("spdf: ",spdf)
   writetable("$(simname)_slat_prob.csv",spdf)
+  stdf = theta_results( df )
+  println("thetadf slatkin: ",stdf)
+  writetable("$(simname)_slatkin_theta.csv",stdf)
+elseif slat_reps == 0  # Watterson
+  stdf = theta_results( df )
+  println("thetadf watterson: ",stdf)
+  writetable("$(simname)_watterson_theta.csv",stdf)
+else # K estimate
+  kdf = K_results( df )
+  println("Kdf  ",kdf)
+  writetable("$(simname)_K.csv",kdf)
 end
-stdf = slatkin_theta_results( df )
-println("stdf: ",stdf)
-writetable("$(simname)_slat_theta.csv",stdf)
+
 
 #=
 drawPlot("meanFitness")
