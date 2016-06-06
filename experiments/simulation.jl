@@ -1,19 +1,17 @@
-# Should this be a module?
-#module NeutCultEvo
-# Suggested usage:  julia -p 8 -L simulation.jl run_simulation.jl configs/example
-include("../src/NeutralCulturalEvolution.jl")
-#Note:  The location of the shared library file  slatkin.so  must be in LD_LIBRARY_PATH
-@everywhere using NeutralCulturalEvolution
-
-#=  Moved to the file:  run.jl
-if length(ARGS) == 0
-  simname = "../experiments/configs/example"
-else
-  simname = ARGS[1]
-end
-
-@everywhere include("$(simname).jl")
+#module NeutCultEvo # Should this be a module?
+#=
+At this time, runs only on a Linux system due to the dependence on the shared library slatkin.so.
+ The source code for compiling this shared library is at https://github.com/um-tech-evolution/slatkin-exact-tools
+ Suggested usage:  julia -p 8 -L simulation.jl run.jl configs/example1
+ Suggested usage:  julia -p 8 -L simulation.jl run.jl configs/example2
+ Suggested usage:  julia -p 8 -L simulation.jl run.jl configs/example3
+ Note:  These write CSV files such as configs/example1.csv.
+ See analysis.jl  for interpretation of the resulting CSV file.
+ Suggested usage:  julia analysis.jl configs/example1
 =#
+include("../src/NeutralCulturalEvolution.jl")
+#Note:  The location of the shared library file  slatkin.so  must be in LD_LIBRARY_PATH on a Linux system
+@everywhere using NeutralCulturalEvolution
 
 # TODO:  Write documentation
 @doc """ function writeheader_Slatkin(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, 
@@ -86,7 +84,8 @@ function writeheader_estK(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_
     "trial",
     "N",
     "N_mu",
-    "K",
+    "K_est",
+    "exp_K",
     "est_theta",
     "true_theta",
   ], ",")
@@ -114,40 +113,69 @@ end
 @doc """ function writerow_estK(stream::IOStream, trial::Int64, N::Int64, mu::Float64, K::Int64, theta::Float64 )
 Write a row to the CSV file for K estimation.
 """
-function writerow_estK(stream::IOStream, trial::Int64, N::Int64, mu::Float64, K::Int64, theta::Float64 )
+function writerow_estK(stream::IOStream, trial::Int64, N::Int64, mu::Float64, K_est::Float64, theta::Float64 )
   line = join(Any[
     trial,
     N,
     mu,
-    K,
+    K_est,
+    ewens_K_est(2.0*mu,N),
     theta,
     2.0*mu
   ], ",")
   write(stream, line, "\n")
 end
 
+# trial result type for both Slatkin and Watterson
+type sw_trial_result
+  N::Int64
+  mu::Float64
+  prob::Float64
+  theta_est::Float64
+end
+
 # TODO:  Write documentation
 # TODO:  Change so that a type with names is returned instead of a tuple
+@doc """ function run_trial_slatkin( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, slat_reps::Int64 )
+Run a neutral population evolution and apply the Slatkin monte carlo test to the result of a single generation.
+"""
 function run_trial_slatkin( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, slat_reps::Int64 )
   r = ewens_montecarlo(Int32(slat_reps),pop_counts32(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
-  (N, mu, r.probability, r.theta_estimate)
+  sw_trial_result(N, mu, r.probability, r.theta_estimate)
 end
 
-# TODO:  Write documentation
-# TODO:  Change so that a type with names is returned instead of a tuple
+@doc """ function run_trial_watterson( N, mu, ngens, burn_in )
+Run a neutral population evolution and apply the Watterson test to the result of a single generation.
+"""
 function run_trial_watterson( N, mu, ngens, burn_in )
   theta_estimate = watterson_theta(pop_counts64(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
-  (N, mu, 0.0, theta_estimate)
+  sw_trial_result(N, mu, 0.0, theta_estimate)
+end
+
+# trial result type for K estimation
+type K_est_trial_result
+  N::Int64
+  mu::Float64
+  K_est::Float64
+  theta_est::Float64
 end
 
 # TODO:  Write documentation
 # TODO:  Change so that a type with names is returned instead of a tuple
+@doc """ function run_trial_K( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )  # simple_popcounts is a bare-bones version of neutral_poplist
+Run a neutral population evolution and apply K estimation to the result of a single generation.
+"""
 function run_trial_K( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )  # simple_popcounts is a bare-bones version of neutral_poplist
   #pop_counts = pop_counts64(simple_poplist(N,mu,ngens, burn_in=burn_in )[ngens])
   pop_counts = pop_counts64(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens])
   theta_estimate = watterson_theta(pop_counts)
   K_estimate = length(pop_counts)
-  (N, mu, K_estimate, theta_estimate)
+  K_est_trial_result(N, mu, K_estimate, theta_estimate)
+end
+
+type trial_type
+  N::Int64
+  mu::Float64
 end
 
 @doc """ function run_simulation(simname::AbstractString, simtype::bool, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
@@ -179,10 +207,11 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, N_lis
   elseif simtype == 1
     writeheader_Slatkin(stream, T, N_list, mu_list, ngens, burn_in, slat_reps )
   end
-  N_mu_list = Tuple{Int64,Float64}[]
+  #N_mu_list = Tuple{Int64,Float64}[]
+  N_mu_list = trial_type[]
   for N in N_list
     for mu in mu_list
-      push!(N_mu_list,(N,mu))
+      push!(N_mu_list,trial_type(N,mu))
     end
   end
   trial_list = N_mu_list
@@ -190,19 +219,18 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, N_lis
     trial_list = vcat(trial_list,N_mu_list)
   end
   if simtype == 2  # Watterson test
-    trials = pmap(tr->run_trial_watterson( tr[1], tr[2], ngens, burn_in ), trial_list )
+    trials = pmap(tr->run_trial_watterson( tr.N, tr.mu, ngens, burn_in ), trial_list )
   elseif simtype == 3  # K_estimate
-    trials = pmap(tr->run_trial_K( tr[1], tr[2], ngens, burn_in ), trial_list )
+    trials = pmap(tr->run_trial_K( tr.N, tr.mu, ngens, burn_in ), trial_list )
   elseif simtype == 1   # Slatkin test
-    trials = pmap(tr->run_trial_slatkin( tr[1], tr[2], ngens, burn_in, slat_reps ), trial_list )
+    trials = pmap(tr->run_trial_slatkin( tr.N, tr.mu, ngens, burn_in, slat_reps ), trial_list )
   end
   t = 1
   for trial in trials
     if simtype == 3  # K_estimate
-      #  trial[1]:N,  trial[2]:mu, trial[3]:r.probability or K_estimate,  trial[4]: est_theta
-      writerow_estK(stream, t, trial[1],trial[2],trial[3],trial[4] ) 
-    else
-      writerow(stream, t, trial[1],trial[2],trial[3],trial[4] ) 
+      writerow_estK(stream, t, trial.N,trial.mu,trial.K_est,trial.theta_est ) 
+    else   # both Slatkin and Watterson tests
+      writerow(stream, t, trial.N, trial.mu, trial.prob, trial.theta_est )
     end
     flush(stream)
     t += 1

@@ -1,7 +1,14 @@
-#module NeutralCulturalAnalysis
+#=
+Command-line program to analyze the CSV file produced by running simulation.jl and run.jl.
+ Suggested usage:
+ julia -p 8 -L simulation.jl run.jl configs/example1.jl
+ julia analysis.jl configs/example1.jl
+
+Writes results as a data frame to stdout, and also to one or two CSV files
+=#
 
 using DataFrames
-using Gadfly
+#using Gadfly  # not used at this time
 
 if length(ARGS) == 0
   error("No simulation config specified.")
@@ -17,12 +24,12 @@ function slatkin_prob_results( df )
     DataFrame(
       mean_prob=mean(d[:prob]),
       median_prob=median(d[:prob]),
-      q01=findlast(x->x<0.01,sort(d[:prob])),
-      q025=findlast(x->x<0.025,sort(d[:prob])),
+      #q01=findlast(x->x<0.01,sort(d[:prob])),
+      #q025=findlast(x->x<0.025,sort(d[:prob])),
       q05=findlast(x->x<0.05,sort(d[:prob])),
       q95=T-findfirst(x->x>0.95,sort(d[:prob])),
-      q975=T-findfirst(x->x>0.975,sort(d[:prob])),
-      q99=T-findfirst(x->x>0.99,sort(d[:prob])),
+      #q975=T-findfirst(x->x>0.975,sort(d[:prob])),
+      #q99=T-findfirst(x->x>0.99,sort(d[:prob])),
     )
   end
   result_df
@@ -48,8 +55,10 @@ end
 function K_results( df )
   result_df = by(df, [:N_mu, :N ] ) do d
     DataFrame(
-      mean_K_est=mean(d[:K]),
-      median_K_est=median(d[:K]),
+      exp_K = d[:exp_K][1],
+      mean_K_est=mean(d[:K_est]),
+      #median_K_est=median(d[:K_est]),
+      std_K=std(d[:K_est]),
       true_theta= d[:true_theta][1],
       #q01 = quantile(d[:est_theta],0.01),
       #q025= quantile(d[:est_theta],0.025),
@@ -63,7 +72,7 @@ function K_results( df )
 end
 
 
-# Plot development
+# Plot development (not used at this time)
 
 function drawPlot(variable)
   for kval = collect(K)
@@ -93,6 +102,9 @@ elseif simtype == 2  # Watterson
   writetable("$(simname)_watterson_theta.csv",stdf)
 elseif simtype == 3 # K estimate
   kdf = K_results( df )
+  println("K results:")
+  println("trials: ",T)
+  println("burn_in: ",burn_in)
   println("Kdf  ",kdf)
   writetable("$(simname)_K.csv",kdf)
 end
@@ -104,5 +116,4 @@ drawPlot("medianFitness")
 drawPlot("maxFitness")
 =#
 
-#end
 
