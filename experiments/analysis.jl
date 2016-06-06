@@ -80,18 +80,18 @@ end
 
 df = readtable("$(simname).csv", makefactors=true, allowcomments=true)
 #println("df: ",df)
-if slat_reps > 0
+if simtype == 1
   spdf = slatkin_prob_results( df )
   println("spdf: ",spdf)
   writetable("$(simname)_slat_prob.csv",spdf)
   stdf = theta_results( df )
   println("thetadf slatkin: ",stdf)
   writetable("$(simname)_slatkin_theta.csv",stdf)
-elseif slat_reps == 0  # Watterson
+elseif simtype == 2  # Watterson
   stdf = theta_results( df )
   println("thetadf watterson: ",stdf)
   writetable("$(simname)_watterson_theta.csv",stdf)
-else # K estimate
+elseif simtype == 3 # K estimate
   kdf = K_results( df )
   println("Kdf  ",kdf)
   writetable("$(simname)_K.csv",kdf)
