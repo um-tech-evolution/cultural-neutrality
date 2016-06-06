@@ -142,7 +142,8 @@ end
 
 # TODO:  Write documentation
 # TODO:  Change so that a type with names is returned instead of a tuple
-function run_trial_K( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )
+function run_trial_K( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )  # simple_popcounts is a bare-bones version of neutral_poplist
+  #pop_counts = pop_counts64(simple_poplist(N,mu,ngens, burn_in=burn_in )[ngens])
   pop_counts = pop_counts64(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens])
   theta_estimate = watterson_theta(pop_counts)
   K_estimate = length(pop_counts)
@@ -167,7 +168,7 @@ ngens:    the number of generations to run after burn in
 slat_reps: the number of monte-carlo reps to use in the Slatkin test
 """
 
-function run_simulation(simname::AbstractString, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
+function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
     ngens::Int64, burn_in::Float64; slat_reps::Int64=100000 )
   #uprogress = PM.Progress(T, 1, "Running...", 40)  # Don't know how to do this with pmap
   stream = open("$(simname).csv", "w")

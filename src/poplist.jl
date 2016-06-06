@@ -2,10 +2,35 @@
 Simulate the infinite alleles model (which is the Wright-Fisher model with infinite alleles mutation).
 This is a single locus model.  Haploidy is assumed---which means that genotypes are not in diploid pairs.
 =#
-export neutral_poplist, pop_counts32,  pop_counts64, poplist_counts32, poplist_counts64
+export neutral_poplist, pop_counts32,  pop_counts64, poplist_counts32, poplist_counts64, simple_poplist
 
 using DataStructures
 #using DataFrames
+
+@doc """ function simple_poplist( N::Int64, mu_per_locus::Float64, ngens::Int64, burn_in::Int64 )
+No-frills implmentation of Wright-Fisher infinite alleles model.
+"""
+
+function simple_poplist( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::Float64=1.0 )
+  int_burn_in = Int(round(N*burn_in))
+  mu = mu_per_pop/N
+  #println("int_burn_in: ",int_burn_in,"  mu: ",mu)
+  poplist= Population[ collect(1:N) ]
+  new_id = N+1
+  for g = 2:(ngens+int_burn_in)
+    result = zeros(Int64,N)
+    for i = 1:N
+      if rand() < mu
+        result[i] = new_id
+        new_id += 1
+      else  # Choose a random element of the previous population
+        result[i] = poplist[g-1][rand(1:N)]
+      end
+    end
+    push!(poplist,result)
+  end
+  poplist[int_burn_in+1:end]
+end 
 
 @doc """ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=N, uniform_start::Bool=false,
     popsize_ratio::Float64=1.0 )
