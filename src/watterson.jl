@@ -4,9 +4,9 @@ Estimates of theta = N_e mu based on Watterson "The homozygosity test of neutral
 allele_freqs is the vector of allele frequecies of the infinite alleles model population.
 =#
 
-export watterson
+export watterson_homozygosity, watterson_theta
 
-function watterson( allele_freqs::Vector{Int64} )
+function watterson_homozygosity( allele_freqs::Vector{Int64} )
   n = sum(allele_freqs)
   sum_a_sq = 0
   for a in allele_freqs
@@ -15,3 +15,6 @@ function watterson( allele_freqs::Vector{Int64} )
   Float64(sum_a_sq)/Float64(n^2)
 end
 
+function watterson_theta( allele_freqs::Vector{Int64} )
+  1.0/watterson_homozygosity( allele_freqs ) - 1.0
+end
