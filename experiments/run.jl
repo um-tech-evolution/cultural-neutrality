@@ -19,4 +19,8 @@ end
 include("$(simname).jl")
 
 
-run_simulation(simname, simtype, T, N_list, mu_list, ngens, burn_in )
+try 
+  run_simulation(simname, simtype, T, N_list, mu_list, ngens, burn_in, cpower_list=cpower_list )
+catch
+  run_simulation(simname, simtype, T, N_list, mu_list, ngens, burn_in )
+end

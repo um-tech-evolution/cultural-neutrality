@@ -55,9 +55,8 @@ end
 function K_results( df )
   result_df = by(df, [:N_mu, :N ] ) do d
     DataFrame(
-      exp_K = d[:exp_K][1],
+      cpower = d[:exp_K][1],
       mean_K_est=mean(d[:K_est]),
-      #median_K_est=median(d[:K_est]),
       std_K=std(d[:K_est]),
       true_theta= d[:true_theta][1],
       #q01 = quantile(d[:est_theta],0.01),
@@ -66,6 +65,19 @@ function K_results( df )
       #q95 = quantile(d[:est_theta],0.95),
       #q975 = quantile(d[:est_theta],0.975),
       #q99 = quantile(d[:est_theta],0.99)
+    )
+  end
+  result_df
+end
+
+function pconform_results( df )
+  result_df = by(df, [:cpower, :N_mu, :N ] ) do d
+    DataFrame(
+      mean_w_theta=mean(d[:w_theta]),
+      mean_s_theta=mean(d[:s_theta]),
+      mean_s_prob=mean(d[:s_prob]),
+      mean_K_est=mean(d[:K_est]),
+      true_theta= d[:true_theta][1],
     )
   end
   result_df
@@ -107,6 +119,10 @@ elseif simtype == 3 # K estimate
   println("burn_in: ",burn_in)
   println("Kdf  ",kdf)
   writetable("$(simname)_K.csv",kdf)
+elseif simtype == 4
+  pcdf = pconform_results( df )
+  println("pconform pcdf: ",pcdf)
+  writetable("$(simname)_pconform.csv",pcdf)
 end
 
 

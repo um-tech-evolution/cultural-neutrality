@@ -10,10 +10,10 @@ At this time, runs only on a Linux system due to the dependence on the shared li
  Suggested usage:  julia analysis.jl configs/example1
 =#
 include("../src/NeutralCulturalEvolution.jl")
+include("conformist.jl")
 #Note:  The location of the shared library file  slatkin.so  must be in LD_LIBRARY_PATH on a Linux system
 @everywhere using NeutralCulturalEvolution
 
-# TODO:  Write documentation
 @doc """ function writeheader_Slatkin(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, 
     burn_in::Float64, slat_reps::Int64=100000 )
 Write header line for output CSV file that corresponds to stream.
@@ -160,8 +160,6 @@ type K_est_trial_result
   theta_est::Float64
 end
 
-# TODO:  Write documentation
-# TODO:  Change so that a type with names is returned instead of a tuple
 @doc """ function run_trial_K( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )  # simple_popcounts is a bare-bones version of neutral_poplist
 Run a neutral population evolution and apply K estimation to the result of a single generation.
 """
@@ -177,6 +175,13 @@ type trial_type
   N::Int64
   mu::Float64
 end
+
+type conform_trial_type
+  N::Int64
+  mu::Float64
+  cpower::Float64
+end
+  
 
 @doc """ function run_simulation(simname::AbstractString, simtype::bool, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
     ngens::Int64, burn_in::Float64; slat_reps::Int64==10000 )
@@ -197,40 +202,60 @@ slat_reps: the number of monte-carlo reps to use in the Slatkin test
 """
 
 function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
-    ngens::Int64, burn_in::Float64; slat_reps::Int64=100000 )
+    ngens::Int64, burn_in::Float64; cpower_list::Vector{Float64}=[0.0], slat_reps::Int64=100000 )
   #uprogress = PM.Progress(T, 1, "Running...", 40)  # Don't know how to do this with pmap
   stream = open("$(simname).csv", "w")
-  if simtype == 3  # K_estimate
-    writeheader_estK(stream, T, N_list, mu_list, ngens, burn_in )
+  if simtype == 1
+    writeheader_Slatkin(stream, T, N_list, mu_list, ngens, burn_in, slat_reps )
   elseif simtype == 2
     writeheader_Watterson(stream, T, N_list, mu_list, ngens, burn_in )
-  elseif simtype == 1
-    writeheader_Slatkin(stream, T, N_list, mu_list, ngens, burn_in, slat_reps )
+  elseif simtype == 3  # K_estimate
+    writeheader_estK(stream, T, N_list, mu_list, ngens, burn_in )
+  elseif simtype == 4  # power conformist
+    writeheader_pconform(stream, T, N_list, mu_list, ngens, burn_in )
   end
-  #N_mu_list = Tuple{Int64,Float64}[]
-  N_mu_list = trial_type[]
-  for N in N_list
-    for mu in mu_list
-      push!(N_mu_list,trial_type(N,mu))
+  if simtype == 1 || simtype == 2 || simtype == 3
+    t_list = trial_type[]
+    for N in N_list
+      for mu in mu_list
+        push!(t_list,trial_type(N,mu))
+      end
+    end
+    trial_list = t_list
+    for t in 1:(T-1)
+      trial_list = vcat(trial_list,t_list)
+    end
+  elseif simtype == 4
+    t_list = conform_trial_type[]
+    for N in N_list
+      for mu in mu_list
+        for cpower in cpower_list
+          push!(t_list,conform_trial_type(N,mu,cpower))
+        end
+      end
+    end
+    trial_list = t_list
+    for t in 1:(T-1)
+      trial_list = vcat(trial_list,t_list)
     end
   end
-  trial_list = N_mu_list
-  for t in 1:(T-1)
-    trial_list = vcat(trial_list,N_mu_list)
-  end
-  if simtype == 2  # Watterson test
+  if simtype == 1   # Slatkin test
+    trials = pmap(tr->run_trial_slatkin( tr.N, tr.mu, ngens, burn_in, slat_reps ), trial_list )
+  elseif simtype == 2  # Watterson test
     trials = pmap(tr->run_trial_watterson( tr.N, tr.mu, ngens, burn_in ), trial_list )
   elseif simtype == 3  # K_estimate
     trials = pmap(tr->run_trial_K( tr.N, tr.mu, ngens, burn_in ), trial_list )
-  elseif simtype == 1   # Slatkin test
-    trials = pmap(tr->run_trial_slatkin( tr.N, tr.mu, ngens, burn_in, slat_reps ), trial_list )
+  elseif simtype == 4  # power conform
+    trials = pmap(tr->run_trial_pconform( tr.N, tr.mu, ngens, burn_in, slat_reps, tr.cpower ), trial_list )
   end
   t = 1
   for trial in trials
-    if simtype == 3  # K_estimate
-      writerow_estK(stream, t, trial.N,trial.mu,trial.K_est,trial.theta_est ) 
-    else   # both Slatkin and Watterson tests
+    if simtype == 1 || simtype == 2  # K_estimate   # both Slatkin and Watterson tests
       writerow(stream, t, trial.N, trial.mu, trial.prob, trial.theta_est )
+    elseif simtype == 3  # K_estimate
+      writerow_estK(stream, t, trial.N,trial.mu,trial.K_est,trial.theta_est ) 
+    elseif simtype == 4  # power conformist
+      writerow_pconform(stream, t, trial )
     end
     flush(stream)
     t += 1
