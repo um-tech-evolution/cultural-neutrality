@@ -3,9 +3,9 @@ Generates a CSV file using normal distribtuions that can be used to test hyptest
 Can be run as a command line program, or can be "included" into julia and run by calling 
   function gen_data(simname).
 Example command-line:
->  julia gendata.jl 7_2_16/gdata
-where the file  7_2_16/gdata.jl  includes the paramter settings for the run and 
-the file 7_2_16/gdata.csv is the generated output CSV file.
+>  julia gendata.jl configs/gdata
+where the file  configs/gdata.jl  includes the paramter settings for the run and 
+the file configs/gdata.csv is the generated output CSV file.
 
 See the parameter file  experiments/7_16_16/gdata.jl  for comments on the paramter settings.
 =#

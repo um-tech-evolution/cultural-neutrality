@@ -91,7 +91,8 @@ end
 
 @doc """ function hyptest( simname )
 
-Adds a column "w_typ2err" to the dataframe computed by function hyptest_results().
+Adds columns "w_typ2err" (Watterson) and "s_typ2err" (Slatkin)  to the dataframe computed by function 
+  hyptest_results().
 For the alternative hypothesis rows, this is the type II error corresponding to a type I error
   probability of 5%.
 """
@@ -102,21 +103,21 @@ function hyptest( simname )
 	hypdf = hyptest_results( df )
   sort!(hypdf,cols=[order(:cpower,by=abs)])
 	check_zero_first( M, hypdf )
-	w_typ2err = zeros(Int64,size(hypdf,1))
+	w_typ2err = zeros(Float64,size(hypdf,1))
 	for i = 1:size(hypdf,1)
     if hypdf[:cpower][i] > 0.0
-      w_typ2err[i] = count_more_w_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:wq05][(i-1)%M+1] )
+      w_typ2err[i] = count_more_w_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:wq05][(i-1)%M+1] )/Float64(T)
     elseif hypdf[:cpower][i] < 0.0
-      w_typ2err[i] = count_less_w_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:wq95][(i-1)%M+1] )
+      w_typ2err[i] = count_less_w_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:wq95][(i-1)%M+1] )/Float64(T)
     end
 	end
 	hypdf[:w_typ2err] = w_typ2err
-	s_typ2err = zeros(Int64,size(hypdf,1))
+	s_typ2err = zeros(Float64,size(hypdf,1))
 	for i = 1:size(hypdf,1)
     if hypdf[:cpower][i] > 0.0
-      s_typ2err[i] = count_more_s_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:sq05][(i-1)%M+1] )
+      s_typ2err[i] = count_more_s_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:sq05][(i-1)%M+1] )/Float64(T)
     elseif hypdf[:cpower][i] < 0.0
-      s_typ2err[i] = count_less_s_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:sq95][(i-1)%M+1] )
+      s_typ2err[i] = count_less_s_theta( df, hypdf[:cpower][i], hypdf[:N][i],hypdf[:N_mu][i],hypdf[:sq95][(i-1)%M+1] )/Float64(T)
     end
 	end
 	hypdf[:s_typ2err] = s_typ2err
