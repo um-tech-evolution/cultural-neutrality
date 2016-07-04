@@ -134,8 +134,6 @@ type sw_trial_result
   theta_est::Float64
 end
 
-# TODO:  Write documentation
-# TODO:  Change so that a type with names is returned instead of a tuple
 @doc """ function run_trial_slatkin( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, slat_reps::Int64 )
 Run a neutral population evolution and apply the Slatkin monte carlo test to the result of a single generation.
 """
@@ -247,6 +245,8 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, N_lis
     trials = pmap(tr->run_trial_K( tr.N, tr.mu, ngens, burn_in ), trial_list )
   elseif simtype == 4  # power conform
     trials = pmap(tr->run_trial_pconform( tr.N, tr.mu, ngens, burn_in, slat_reps, tr.cpower ), trial_list )
+  elseif simtype == 5  # Acerbi conform
+    trials = pmap(tr->run_trial_aconform( tr.N, tr.mu, ngens, burn_in, slat_reps, tr.acer_C ), trial_list )
   end
   t = 1
   for trial in trials

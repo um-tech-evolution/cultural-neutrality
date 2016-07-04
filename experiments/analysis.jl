@@ -74,8 +74,17 @@ function pconform_results( df )
   result_df = by(df, [:cpower, :N_mu, :N ] ) do d
     DataFrame(
       mean_w_theta=mean(d[:w_theta]),
+      std_w_theta=std(d[:w_theta]),
+      wq05 = quantile(d[:w_theta],0.05),
+      wq95 = quantile(d[:w_theta],0.95),
       mean_s_theta=mean(d[:s_theta]),
+      std_s_theta=std(d[:s_theta]),
+      sq05 = quantile(d[:s_theta],0.05),
+      sq95 = quantile(d[:s_theta],0.95),
       mean_s_prob=mean(d[:s_prob]),
+      std_s_prob=std(d[:s_prob]),
+      spq05 = quantile(d[:s_prob],0.05),
+      spq95 = quantile(d[:s_prob],0.95),
       mean_K_est=mean(d[:K_est]),
       true_theta= d[:true_theta][1],
     )

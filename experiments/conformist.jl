@@ -30,10 +30,52 @@ function writeheader_pconform(stream::IOStream, T::Int64, N_list::Vector{Int64},
   write(stream, line, "\n")
 end
 
+# For Acerbi conformist
+@doc """ function writeheader_aconform(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, burn_in::Float64 )
+Write header line for output CSV file that corresponds to stream.
+See the comments for run_simulation for a description of the parameters.
+"""
+
+function writeheader_aconform(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, acer_K::Int64, ngens::Int64, burn_in::Float64 )
+  write(stream, join([
+    "# Acerbi Conformist",
+    "# trials=$(T)",
+    "# N_list=$(N_list)",
+    "# mu_list=$(mu_list)",
+    "# acer_K=$(acer_K)",
+    "# ngens=$(ngens)",
+    "# burn_in=$(burn_in)",
+  ], "\n"), "\n")
+  line = join([
+    "trial",
+    "N",
+    "N_mu",
+    "acer C",
+    "w_theta",
+    "s_theta",
+    "s_prob",
+    "K_est",
+    "true_theta",
+  ], ",")
+  write(stream, line, "\n")
+end
+
 type pconform_trial_result
   N::Int64
   mu::Float64
   cpower::Float64 
+  K_estimate::Float64
+  watterson_theta::Float64
+  slatkin_theta::Float64
+  slatkin_prob::Float64
+  K_est::Float64
+end
+
+type aconform_trial_result
+  N::Int64
+  mu::Float64
+  acer_K::Int64 
+  acer_C::Float64 
   K_estimate::Float64
   watterson_theta::Float64
   slatkin_theta::Float64
@@ -51,6 +93,25 @@ function writerow_pconform(stream::IOStream, trial::Int64, trial_result::pconfor
     trial_result.N,
     trial_result.mu,
     trial_result.cpower,
+    trial_result.watterson_theta,
+    trial_result.slatkin_theta,
+    trial_result.slatkin_prob,
+    trial_result.K_est,
+    2.0*trial_result.mu
+  ], ",")
+  write(stream, line, "\n")
+end
+
+# For power conformist
+@doc """ function writerow_pconform(stream::IOStream, trial::Int64, trial_result::pconform_trial_result )
+Write a row to the CSV file for K estimation.
+"""
+function writerow_aconform(stream::IOStream, trial::Int64, trial_result::aconform_trial_result )
+  line = join(Any[
+    trial,
+    trial_result.N,
+    trial_result.mu,
+    trial_result.acer_C,
     trial_result.watterson_theta,
     trial_result.slatkin_theta,
     trial_result.slatkin_prob,

@@ -19,8 +19,11 @@ end
 include("$(simname).jl")
 
 
+#=
 try 
   run_simulation(simname, simtype, T, N_list, mu_list, ngens, burn_in, cpower_list=cpower_list )
 catch
   run_simulation(simname, simtype, T, N_list, mu_list, ngens, burn_in )
 end
+=#
+run_simulation(simname, simtype, T, N_list, mu_list, ngens, burn_in, cpower_list=cp_list )
