@@ -2,7 +2,8 @@
 Simulate the infinite alleles model (which is the Wright-Fisher model with infinite alleles mutation).
 This is a single locus model.  Haploidy is assumed---which means that genotypes are not in diploid pairs.
 =#
-export neutral_poplist, pop_counts32,  pop_counts64, poplist_counts32, poplist_counts64, simple_poplist, ewens_K_est
+export neutral_poplist, pop_counts32,  pop_counts64, poplist_counts32, 
+    poplist_counts64, simple_poplist, ewens_K_est, sample_population
 
 using DataStructures
 #using DataFrames
@@ -130,12 +131,16 @@ function poplist_counts64( poplst::PopList )
   pop_counts64( combined_pop )
 end
 
-function ewens_K_est( theta::Float64, n::Int64 )
+function ewens_K_est( theta::Float64, N::Int64 )
   result = 1.0
-  for i = 1:(n-1)
+  for i = 1:(N-1)
     result += theta/(theta+i)
   end
   result
 end
   
-  
+# Take a random sample (with replcement) of size new_size from a population
+function sample_population( pop::Population, new_size::Int64 )
+  indices = rand(1:length(pop),new_size)
+  new_pop = [ pop[i] for i in indices ]
+end

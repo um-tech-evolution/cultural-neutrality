@@ -36,13 +36,13 @@ Write header line for output CSV file that corresponds to stream.
 See the comments for run_simulation for a description of the parameters.
 """
 
-function writeheader_aconform(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, acer_K::Int64, ngens::Int64, burn_in::Float64 )
+function writeheader_aconform(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, acer_topsize::Int64, ngens::Int64, burn_in::Float64 )
   write(stream, join([
     "# Acerbi Conformist",
     "# trials=$(T)",
     "# N_list=$(N_list)",
     "# mu_list=$(mu_list)",
-    "# acer_K=$(acer_K)",
+    "# acer_topsize=$(acer_topsize)",
     "# ngens=$(ngens)",
     "# burn_in=$(burn_in)",
   ], "\n"), "\n")
@@ -50,7 +50,7 @@ function writeheader_aconform(stream::IOStream, T::Int64, N_list::Vector{Int64},
     "trial",
     "N",
     "N_mu",
-    "acer C",
+    "acer_C",
     "w_theta",
     "s_theta",
     "s_prob",
@@ -64,7 +64,6 @@ type pconform_trial_result
   N::Int64
   mu::Float64
   cpower::Float64 
-  K_estimate::Float64
   watterson_theta::Float64
   slatkin_theta::Float64
   slatkin_prob::Float64
@@ -74,9 +73,8 @@ end
 type aconform_trial_result
   N::Int64
   mu::Float64
-  acer_K::Int64 
+  acer_topsize::Int64 
   acer_C::Float64 
-  K_estimate::Float64
   watterson_theta::Float64
   slatkin_theta::Float64
   slatkin_prob::Float64
@@ -102,7 +100,7 @@ function writerow_pconform(stream::IOStream, trial::Int64, trial_result::pconfor
   write(stream, line, "\n")
 end
 
-# For power conformist
+# For Acerbi conformist and anti-conformist
 @doc """ function writerow_pconform(stream::IOStream, trial::Int64, trial_result::pconform_trial_result )
 Write a row to the CSV file for K estimation.
 """
@@ -120,6 +118,7 @@ function writerow_aconform(stream::IOStream, trial::Int64, trial_result::aconfor
   ], ",")
   write(stream, line, "\n")
 end
+
 @doc """ function run_trial_pconform( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, slat_reps::Int64, cpower::Float64 )  
 Run a neutral population evolution and apply K estimation to the result of a single generation.
 """
@@ -129,7 +128,19 @@ function run_trial_pconform( N::Int64, mu::Float64, ngens::Int64, burn_in::Float
   sl = ewens_montecarlo(Int32(slat_reps),p_counts32)
   K_estimate = length(p_counts64)
   w_theta = watterson_theta(p_counts64)
-  pconform_trial_result(N, mu, cpower, K_estimate, w_theta, sl.theta_estimate, sl.probability, K_estimate )
+  pconform_trial_result(N, mu, cpower, w_theta, sl.theta_estimate, sl.probability, K_estimate )
+end
+
+@doc """ function run_trial_acerbi( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, C::Float64, toplist_size::Int64 )  
+Run a neutral population evolution and apply K estimation to the result of a single generation.
+"""
+function run_trial_acerbi( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, slat_reps::Int64, C::Float64, top_list_size::Int64 )  
+  p_counts64 = pop_counts64(acerbi_conformist_poplist(N,mu/N,ngens, C, burn_in=burn_in )[ngens])
+  p_counts32 = map(x->convert(Int32,x),p_counts64)
+  sl = ewens_montecarlo(Int32(slat_reps),p_counts32)
+  K_estimate = length(p_counts64)
+  w_theta = watterson_theta(p_counts64)
+  aconform_trial_result(N, mu, top_list_size, C, w_theta, sl.theta_estimate, sl.probability, K_estimate )
 end
 
 #=
@@ -138,6 +149,7 @@ mu_list = [1.0,10.0]
 ngens = 1
 burn_in = 2.0
 cpower = 0.0
+C = 0.0
 slat_reps = 100000
 =#
 
