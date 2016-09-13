@@ -1,3 +1,6 @@
+#= Nearly neutral version of simulation
+=#
+
 #module NeutCultEvo # Should this be a module?
 #=
 At this time, runs only on a Linux system due to the dependence on the shared library slatkin.so.
@@ -10,233 +13,286 @@ At this time, runs only on a Linux system due to the dependence on the shared li
  Suggested usage:  julia analysis.jl configs/example1
 =#
 include("../src/NeutralCulturalEvolution.jl")
+include("conformist.jl")
 #Note:  The location of the shared library file  slatkin.so  must be in LD_LIBRARY_PATH on a Linux system
 @everywhere using NeutralCulturalEvolution
 
-# TODO:  Write documentation
-@doc """ function writeheader_Slatkin(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, 
-    burn_in::Float64, slat_reps::Int64=100000 )
+# If the next 2 lines are changed, the corresponding changes also need to be made in the trial_result type and in writerow.
+const p_homoz_headers = [ "p_1_4", "p_1_6", "p_2_6", "p_3_0" ]
+const p_homoz_coeffs  = [ 1.4, 1.6, 2.6, 3.0 ]
+
+@doc """ function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, ngens::Int64, 
+    burn_in::Float64, slat_reps::Int64=100000 ) 
 Write header line for output CSV file that corresponds to stream.
 See the comments for run_simulation for a description of the parameters.
 """
-function writeheader_Slatkin(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, 
-    burn_in::Float64, slat_reps::Int64=100000 )
-  write(stream, join([
-    "# Slatkin",
+function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, ngens::Int64, 
+    burn_in::Float64, slat_reps::Int64=100000 ) 
+  param_strings = [
+    "# $(string(Dates.today()))",
     "# trials=$(T)",
-    "# N_list=$(N_list)",
-    "# mu_list=$(mu_list)",
+    "# n_list=\"$(n_list)\"",
+    "# N_mu_list=\"$(N_mu_list)\"",
     "# ngens=$(ngens)",
     "# burn_in=$(burn_in)",
     "# slat_reps=$(slat_reps)",
-  ], "\n"), "\n")
-  line = join([
-    "trial",
-    "N",
-    "N_mu",
-    "prob",
-    "est_theta",
-    "true_theta",
-  ], ",")
+    "# popsize_multiplier=$(popsize_multiplier)"
+    ]
+  write(stream, join(param_strings, "\n"), "\n")
+  first_heads = ["trial", "N", "n", "N_mu","K"]
+  last_heads = vcat([ "s_prob", 
+    #"se_prob", 
+    #"we_prob", 
+    "s_homoz", "w_homoz"], p_homoz_headers )
+  if simtype == 1
+    mid_heads = ["cpower"]
+  elseif simtype == 2
+    mid_heads = ["acer_C", "acer_topsize"]
+  elseif simtype == 3
+    mid_heads = ["nn_select"]
+  else
+    mid_heads = []
+  end
+  line = join(vcat( first_heads, mid_heads, last_heads), ",")
   write(stream, line, "\n")
 end
 
-@doc """ function writeheader_Watterson(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, burn_in::Float64 )
-Write header line for output CSV file that corresponds to stream.
-See the comments for run_simulation for a description of the parameters.
-"""
-function writeheader_Watterson(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, burn_in::Float64 )
-  write(stream, join([
-    "# Watterson",
-    "# trials=$(T)",
-    "# N_list=$(N_list)",
-    "# mu_list=$(mu_list)",
-    "# ngens=$(ngens)",
-    "# burn_in=$(burn_in)",
-  ], "\n"), "\n")
-  line = join([
-    "trial",
-    "N",
-    "N_mu",
-    "prob",
-    "est_theta",
-    "true_theta",
-  ], ",")
-  write(stream, line, "\n")
+# trial result type that includes Watterson homoz, Slatkin homoz, Slatkin prob, and Ewens K estimate
+type trial_result
+  N::Int64
+  n::Int64
+  N_mu::Float64
+  K::Int64
+  cpower::Float64
+  acer_C::Float64
+  acer_topsize::Int64
+  nn_selection::Int64
+  s_prob::Float64
+  # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
+  #se_prob::Float64
+  #we_prob::Float64
+  w_homoz::Float64
+  s_homoz::Float64
+  p_1_4      # p-homozygosity for p = 1.4
+  p_1_6      # p-homozygosity for p = 1.6
+  p_2_6      # p-homozygosity for p = 2.6
+  p_3_0      # p-homozygosity for p = 3.0
 end
 
-# For estimating K
-@doc """ function writeheader_estK(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, burn_in::Float64 )
-Write header line for output CSV file that corresponds to stream.
-See the comments for run_simulation for a description of the parameters.
+@doc """ function writerow(stream::IOStream, trial::Int64, N::Int64, N_mu::Float64, K::Int64, theta::Float64 )
+Write a row to the CSV file.
 """
-
-function writeheader_estK(stream::IOStream, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, burn_in::Float64 )
-  write(stream, join([
-    "# Estimate K",
-    "# trials=$(T)",
-    "# N_list=$(N_list)",
-    "# mu_list=$(mu_list)",
-    "# ngens=$(ngens)",
-    "# burn_in=$(burn_in)",
-  ], "\n"), "\n")
-  line = join([
-    "trial",
-    "N",
-    "N_mu",
-    "K_est",
-    "exp_K",
-    "est_theta",
-    "true_theta",
-  ], ",")
-  write(stream, line, "\n")
-end
-
-
-
-@doc """ function writerow(stream::IOStream, trial::Int64, N::Int64, mu::Float64, prob::Float64, theta::Float64 )
-Write a row to the CSV file for Slatkin and Watterson.
-"""
-function writerow(stream::IOStream, trial::Int64, N::Int64, mu::Float64, prob::Float64, theta::Float64 )
-  line = join(Any[
+function writerow(stream::IO, simtype::Int64, trial::Int64, tr::trial_result  )
+  first = Any[
     trial,
-    N,
-    mu,
-    prob,
-    theta,     # estimated theta
-    2.0*mu     # true theta
-  ], ",")
+    tr.N,           # popsize
+    tr.n,           # sample size
+    tr.N_mu,        # N/mu
+    tr.K,           # The number of alleles in the sample
+  ]
+  last = Any[
+    tr.s_prob,      # Slatkin estimated probability
+    # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
+    #tr.se_prob,     # Slatkin exact probability
+    #tr.we_prob,     # Watterson exact probability
+    tr.s_homoz,     # Slatkin estimated homozygosity = 1/(1+theta) where theta = Slatkin est theta
+    tr.w_homoz,     # Watterson estimated homozygosity
+    tr.p_1_4,      # p-homozygosity for p = 1.4
+    tr.p_1_6,      # p-homozygosity for p = 1.6
+    tr.p_2_6,      # p-homozygosity for p = 2.6
+    tr.p_3_0,      # p-homozygosity for p = 3.0
+  ]
+  if simtype == 0 
+    mid = Any[]
+  elseif simtype == 1
+    mid = Any[ 
+      tr.cpower 
+    ]
+  elseif simtype == 2
+    mid = Any[ 
+      tr.acer_C,
+      tr.acer_topsize
+    ]
+  elseif simtype == 3
+    mid = Any[ 
+      tr.nn_selection 
+    ]
+  end
+  line = join( vcat( first, mid, last ), "," )
   write(stream, line, "\n")
 end
 
-# For estimating K
-@doc """ function writerow_estK(stream::IOStream, trial::Int64, N::Int64, mu::Float64, K::Int64, theta::Float64 )
-Write a row to the CSV file for K estimation.
+@doc """ function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1.0, burn_in::Float64=2.0, 
+      slat_reps::Int64=10000, cpower::Float64=0.0, acer_C::Float64=0.0, acer_topsize::Int64=10 )
+Run a population evolution and return various statitics based on a single generation after burn in.
 """
-function writerow_estK(stream::IOStream, trial::Int64, N::Int64, mu::Float64, K_est::Float64, theta::Float64 )
-  line = join(Any[
-    trial,
-    N,
-    mu,
-    K_est,
-    ewens_K_est(2.0*mu,N),
-    theta,
-    2.0*mu
-  ], ",")
-  write(stream, line, "\n")
+function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1.0, burn_in::Float64=2.0, 
+      slat_reps::Int64=10000, cpower::Float64=0.0, acer_C::Float64=0.0, acer_topsize::Int64=10, nn_select::Int64=0 )
+  if psize_mult > 1.0  # Define popsize N different from sample size n
+    N = Int(ceil(psize_mult*n))
+    #println("N: ", N)
+  else
+    N = n
+  end
+  if cpower==0.0 && acer_C==0.0 && !isdefined(:dfe)
+    pop = neutral_poplist(N, N_mu/N, ngens, burn_in=burn_in )[ngens]
+  elseif cpower != 0.0
+    pop = power_conformist_poplist(N, N_mu/N, ngens, burn_in=burn_in, conformist_power=cpower )[ngens]
+  elseif acer_C != 0.0
+    pop = acerbi_conformist_poplist(N, N_mu/N, ngens, acer_C, burn_in=burn_in, toplist_size=acer_topsize  )[ngens]
+  elseif isdefined(:dfe)   # Nearly neutral
+    pop = nearly_neutral_poplist(N, N_mu/N, ngens, dfe, burn_in=burn_in, nn_select=nn_select )[ngens]
+  end
+  if psize_mult > 1.0 # take a random sample of size n from population of size N
+    new_pop = sample_population( pop, n )
+    #println("sampling population with sample size: ", n)
+  else
+    new_pop = pop
+  end
+  p64 = pop_counts64(new_pop)
+  p32 = pop_counts32(new_pop)
+  p8 = pop_counts8(new_pop)
+  sr = ewens_montecarlo(Int32(slat_reps),p32)
+  #se_prob = slatkin_exact( p8, Btbl )
+  #we_prob = watterson_exact( p8, Btbl )
+  s_homoz = 1.0/(1.0+sr.theta_estimate)
+  w_homoz = watterson_homozygosity(p64)
+  #ewens_est_K = ewens_K_est( 2*N_mu, N )
+  #slatkin_est_K = ewens_K_est( sr.theta_estimate, N )
+  #TODO:  include the p_homozygosity parameters in the initialization data
+  #p_1_4 = p_homozygosity( p64, 1.4 )
+  #p_1_6 = p_homozygosity( p64, 1.6 )
+  #p_2_6 = p_homozygosity( p64, 2.6 )
+  #p_3_0 = p_homozygosity( p64, 3.0 )
+  #trial_result(N, n, N_mu, length(p64), cpower, acer_C, acer_topsize, sr.probability, w_homoz, s_homoz, p_1_4, p_1_6, p_2_1, p_2_4 )
+  trial_result(N, n, N_mu, length(p64), cpower, acer_C, acer_topsize, nn_select, sr.probability, 
+    # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
+    #se_prob, 
+    #we_prob, 
+    w_homoz, s_homoz, 
+    p_homozygosity( p64, p_homoz_coeffs[1]), 
+    p_homozygosity( p64, p_homoz_coeffs[2]), 
+    p_homozygosity( p64, p_homoz_coeffs[3]), 
+    p_homozygosity( p64, p_homoz_coeffs[4]) )
+
 end
 
-# trial result type for both Slatkin and Watterson
-type sw_trial_result
-  N::Int64
-  mu::Float64
-  prob::Float64
-  theta_est::Float64
+type neutral_trial_type
+  n::Int64
+  N_mu::Float64
 end
 
-# TODO:  Write documentation
-# TODO:  Change so that a type with names is returned instead of a tuple
-@doc """ function run_trial_slatkin( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, slat_reps::Int64 )
-Run a neutral population evolution and apply the Slatkin monte carlo test to the result of a single generation.
-"""
-function run_trial_slatkin( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64, slat_reps::Int64 )
-  r = ewens_montecarlo(Int32(slat_reps),pop_counts32(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
-  sw_trial_result(N, mu, r.probability, r.theta_estimate)
+type nearly_neutral_trial_type
+  n::Int64
+  N_mu::Float64
+  nn_select::Int64   # 1 means there is nearly neutral selection, 0 means no selection
 end
 
-@doc """ function run_trial_watterson( N, mu, ngens, burn_in )
-Run a neutral population evolution and apply the Watterson test to the result of a single generation.
-"""
-function run_trial_watterson( N, mu, ngens, burn_in )
-  theta_estimate = watterson_theta(pop_counts64(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens]))
-  sw_trial_result(N, mu, 0.0, theta_estimate)
+type pconform_trial_type
+  n::Int64
+  N_mu::Float64
+  cpower::Float64
 end
 
-# trial result type for K estimation
-type K_est_trial_result
-  N::Int64
-  mu::Float64
-  K_est::Float64
-  theta_est::Float64
+type aconform_trial_type
+  n::Int64
+  N_mu::Float64
+  acer_C::Float64
+  acer_topsize::Int64
 end
 
-# TODO:  Write documentation
-# TODO:  Change so that a type with names is returned instead of a tuple
-@doc """ function run_trial_K( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )  # simple_popcounts is a bare-bones version of neutral_poplist
-Run a neutral population evolution and apply K estimation to the result of a single generation.
-"""
-function run_trial_K( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )  # simple_popcounts is a bare-bones version of neutral_poplist
-  #pop_counts = pop_counts64(simple_poplist(N,mu,ngens, burn_in=burn_in )[ngens])
-  pop_counts = pop_counts64(neutral_poplist(N,mu/N,ngens, burn_in=burn_in )[ngens])
-  theta_estimate = watterson_theta(pop_counts)
-  K_estimate = length(pop_counts)
-  K_est_trial_result(N, mu, K_estimate, theta_estimate)
+function build_global_vars( n_list::Vector{Int64} )
+  @everywhere max_n = maximum(n_list)
+  @everywhere Btbl = BT(max_n,max_n)
 end
-
-type trial_type
-  N::Int64
-  mu::Float64
-end
-
-@doc """ function run_simulation(simname::AbstractString, simtype::bool, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
-    ngens::Int64, burn_in::Float64; slat_reps::Int64==10000 )
+  
+@doc """ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, 
+    ngens::Int64, burn_in::Float64; cpower_list::Vector{Float64}=Float64[], slat_reps::Int64=100000, acer_C_list::Vector{Float64}=Float64[], 
 
 This is the function that actually runs the simulation.  
 A list of "trials" (arguments to run_trial()) is produced that is fed to pmap so that trials are run in parallel.
 Arguments:
-simtype:  1 means use Slatkin test
-          2 means use Watterson test
-          3 means estimate K where K is the number of allele types
-T:        the number of trials to run for each setting of N and mu
-N_list:   a list of population sizes
-mu_list:  a list of per-generation mutation rates (the per-locus mutation rate is mu/N)
+simtype:  1 means use power model of conformity (corresponds to length(cpower_list)>0)
+          2 means use Acerbi model of conformity (corresponds to length(acer_C_list)>0)
+T:        the number of trials to run for each setting of N and N_mu
+n_list:   a list of sample sizes
+N_mu_list:  a list of per-generation mutation rates (the per-locus mutation rate is N_mu/N)
 ngens:    the number ogenerations to run (not including burn-in)
 burn_in:  the number of preliminary generations run to stabilize as a multiple of pop size N
 ngens:    the number of generations to run after burn in
 slat_reps: the number of monte-carlo reps to use in the Slatkin test
 """
 
-function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
-    ngens::Int64, burn_in::Float64; slat_reps::Int64=100000 )
-  #uprogress = PM.Progress(T, 1, "Running...", 40)  # Don't know how to do this with pmap
+function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, 
+    ngens::Int64, burn_in::Float64; cpower_list::Vector{Float64}=Float64[], slat_reps::Int64=100000, acer_C_list::Vector{Float64}=Float64[], 
+    acer_topsize::Int64=10, popsize_multiplier::Float64=1.0 )
+  for n in n_list
+    if n > typemax(ConfigInt)
+      error("Reset the type ConfigInt in src/aliases.jl so that n <= typemax(ConfigInt) for all n in n_list.")
+    end
+  end
+  build_global_vars( n_list )
   stream = open("$(simname).csv", "w")
-  if simtype == 3  # K_estimate
-    writeheader_estK(stream, T, N_list, mu_list, ngens, burn_in )
-  elseif simtype == 2
-    writeheader_Watterson(stream, T, N_list, mu_list, ngens, burn_in )
-  elseif simtype == 1
-    writeheader_Slatkin(stream, T, N_list, mu_list, ngens, burn_in, slat_reps )
+  if popsize_multiplier > 1.0
+    N_list = map(x->popsize_multiplier*x, n_list)
+    println(" N_list: ",N_list)
   end
-  #N_mu_list = Tuple{Int64,Float64}[]
-  N_mu_list = trial_type[]
-  for N in N_list
-    for mu in mu_list
-      push!(N_mu_list,trial_type(N,mu))
+  writeheader(stream,simtype,T,n_list,N_mu_list,ngens,burn_in)
+  if simtype == 0   # neutral, no conformity
+    t_list = neutral_trial_type[]
+    for n in n_list
+      for N_mu in N_mu_list
+          push!(t_list,neutral_trial_type(n,N_mu))
+      end
+    end
+  elseif simtype == 1   # power conformity
+    t_list = pconform_trial_type[]
+    for n in n_list
+      for N_mu in N_mu_list
+        for cpower in cpower_list
+          push!(t_list,pconform_trial_type(n,N_mu,cpower))
+        end
+      end
+    end
+  elseif simtype == 2   # Acerbi conformity
+    t_list = aconform_trial_type[]
+    for n in n_list
+      for N_mu in N_mu_list
+        for acer_C in acer_C_list
+          push!(t_list,aconform_trial_type(n,N_mu,acer_C,acer_topsize))
+        end
+      end
+    end
+  elseif simtype == 3   # Nearly neutral
+    t_list = nearly_neutral_trial_type[]
+    for n in n_list
+      for N_mu in N_mu_list
+        for nn_sel = 0:1   # 0 means no selection, 1 means nearly neutral selection
+          push!(t_list,nearly_neutral_trial_type(n,N_mu,nn_sel))
+        end
+      end
     end
   end
-  trial_list = N_mu_list
+  trial_list = t_list
   for t in 1:(T-1)
-    trial_list = vcat(trial_list,N_mu_list)
+    trial_list = vcat(trial_list,t_list)
   end
-  if simtype == 2  # Watterson test
-    trials = pmap(tr->run_trial_watterson( tr.N, tr.mu, ngens, burn_in ), trial_list )
-  elseif simtype == 3  # K_estimate
-    trials = pmap(tr->run_trial_K( tr.N, tr.mu, ngens, burn_in ), trial_list )
-  elseif simtype == 1   # Slatkin test
-    trials = pmap(tr->run_trial_slatkin( tr.N, tr.mu, ngens, burn_in, slat_reps ), trial_list )
+  if simtype == 0   # neutral conform
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
+  elseif simtype == 1   # power conform
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps, cpower=tr.cpower ), trial_list )
+  elseif simtype == 2  # Acerbi conform
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps, acer_C=tr.acer_C, acer_topsize=tr.acer_topsize ), trial_list )
+  elseif simtype == 3  # Nearly neutral
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps, nn_select=tr.nn_select ), trial_list )
   end
-  t = 1
-  for trial in trials
-    if simtype == 3  # K_estimate
-      writerow_estK(stream, t, trial.N,trial.mu,trial.K_est,trial.theta_est ) 
-    else   # both Slatkin and Watterson tests
-      writerow(stream, t, trial.N, trial.mu, trial.prob, trial.theta_est )
-    end
+  trial = 1
+  for t_result in trial_results
+    writerow(stream, simtype, trial, t_result )
     flush(stream)
-    t += 1
+    trial += 1
   end
   close(stream)
 end
-
 
 #end #module

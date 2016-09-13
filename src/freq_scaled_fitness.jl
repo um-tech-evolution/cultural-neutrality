@@ -22,19 +22,26 @@ function freq_scaled_fitness( pop::Population, w::Vector{Float64}, c::Float64 )
 end
 
 @doc """ function propsel( pop::Population, fitness::Vector{Float64}  )
-
 Apply proportional selection to Population pop using fitness, 
 and return the result.  
 """
-
 function propsel( pop::Population, fitness::Vector{Float64}  )
   new_pop = deepcopy(pop)
   propsel!( new_pop, fitness )
   new_pop
 end
 
-@doc """function propsel!(p::Population, fitness::Vector{Float64} )
+@doc """ function propsel( pop::Population, fitness::Function, nn_select::Int64 )
+Apply proportional selection to Population pop using fitness, 
+and return the result.  
+"""
+function propsel( pop::Population, fitness::Function, dfe::Function, nn_select::Int64 )
+  new_pop = deepcopy(pop)
+  propsel!( new_pop, fitness, dfe, nn_select )
+  new_pop
+end
 
+@doc """function propsel!(p::Population, fitness::Vector{Float64} )
 Conduct proportional selection in-place.
 """
 function propsel!( pop::Population, fitness::Vector{Float64}  )
@@ -50,6 +57,36 @@ function propsel!( pop::Population, fitness::Vector{Float64}  )
   while k < n
     i = rand(1:n)
     w = fitness[i] / fmax
+    if rand() < w
+      selected[k + 1] = i
+      k += 1
+    end
+  end
+  pop[:] = [ pop[selected[i]] for i = 1:n ]
+end
+
+@doc """function propsel!(p::Population, fitness::Function, dfe::Function )
+Conduct proportional selection in-place.
+"""
+function propsel!( pop::Population, fitness::Function, dfe::Function, nn_select::Int64 )
+  fmax = 0.0
+  for p in pop
+    fitp = fitness( p, dfe, nn_select )
+    if fitp > fmax
+      fmax = fitp
+    end
+  end
+  if fmax == 0.0
+    # all elements have fitness zero
+    return
+  end
+
+  n = length(pop)
+  selected = zeros(Int64, n)
+  k = 0
+  while k < n
+    i = rand(1:n)
+    w = fitness(i,dfe,nn_select) / fmax
     if rand() < w
       selected[k + 1] = i
       k += 1
