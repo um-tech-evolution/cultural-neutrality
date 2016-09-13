@@ -10,7 +10,7 @@
 #     OF SINGLE LOCUS HETEROZYGOSITY" by PAUL A. FUERST, RANAJIT CHAKRABORTY AND MASATOSHI NE1
 #     Genetics, 1977.
 
-export BSs, BSrec, BT, BS, BTr, BSr, Pcfg, PCcfg, Rsample, number_orders 
+export BSs, BSrec, BT, BS, BTr, BSr, Pcfg, PCcfg, Rsample, number_orders, number_ordersF
   
 @doc """ function BSs( K::Int64, N::Int64 )
 Based on Stewart's equation between A1 and A2.
@@ -41,6 +41,7 @@ Bottom up version also based on the recurrence.
 Returns a table of of Float64's
 """
 function BT( K::Int64, N::Int64 )
+  #println("function BT  K: ", K, "  N: ",N)
   if K == 0 && N == 0
     return 1.0
   elseif K <= 0 || N <= 0 || K > N
@@ -116,7 +117,7 @@ function BSr( K::Int64, N::Int64 )
   return tbl == 0 ? 0 : tbl[K,N]
 end
 
-@doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64} )
+@doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Config )
 Returns the probability of an ordered allele count configuration whose length
     may be less than K and whose sum may be less than N.
 Ordered means that allele_counts is not assumed to be in decreasing order of counts.
@@ -130,20 +131,20 @@ Example:
 julia> Pcfg( 6, 3, [2,3,1] )
 4//45
 """
-function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64} )
+function Pcfg( N::Int64, K::Int64, allele_counts::Config )
   L = length( allele_counts )
   S = sum( allele_counts )
   P = prod( allele_counts )
   return BSr(K-L,N-S)//P//BSr(K,N)
 end
 
-@doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+@doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Float64,2} )
 Returns the probability of an ordered allele count configuration whose length
     may be less than K and whose sum may be less than N.
 Ordered means that different orders of allele_counts are counted separately.
 Btbl would normally be computed by the function BT.
 """
-function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+function Pcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Float64,2} )
   L = length( allele_counts )
   S = sum( allele_counts )
   P = prod( allele_counts )
@@ -155,13 +156,22 @@ function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Flo
   return num/P/Btbl[K,N]
 end
 
-@doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Rational{Int128},2} )
+@doc """ function Pcfg( allele_counts::Config, Btbl::Array{Float64,2} )
+Assumes that N and K are the sum and length of allele_counts respectively.
+"""
+function Pcfg( allele_counts::Config, Btbl::Array{Float64,2} )
+  N = convert(Int64,sum(allele_counts))
+  K = length(allele_counts)
+  Pcfg(N,K,allele_counts,Btbl)
+end
+
+@doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Rational{Int128},2} )
 Returns the probability of an ordered allele count configuration whose length
     may be less than K and whose sum may be less than N.
 Ordered means that different orders of allele_counts are counted separately.
 Btbl would normally be computed by the function BTr.
 """
-function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Rational{Int128},2} )
+function Pcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Rational{Int128},2} )
   L = length( allele_counts )
   S = sum( allele_counts )
   P = prod( allele_counts )
@@ -173,14 +183,14 @@ function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Rat
   return num//P//Btbl[K,N]
 end
 
-@doc """ function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64} )
+@doc """ function PCcfg( N::Int64, K::Int64, allele_counts::Config )
 Returns the conditional probability of allele_counts[end] given allele_counts[1:(end-1)].
 Note that allele_counts is ordered which means that allele_counts is not assumed to be 
    in decreasing order of counts.
 Inefficient because it computes 2 tables.
 Returns a rational.
 """
-function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64} )
+function PCcfg( N::Int64, K::Int64, allele_counts::Config )
   L = length( allele_counts )
   S = sum( allele_counts )
   Sr = S - allele_counts[end]  # sum except for last
@@ -188,14 +198,14 @@ function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64} )
   return tmp > 0 ? BSr(K-L,N-S)//allele_counts[end]//tmp : 0
 end
 
-@doc """ function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+@doc """ function PCcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Float64,2} )
 Returns the conditional probability of allele_counts[end] given allele_counts[1:(end-1)]
 Note that allele_counts is ordered which means that allele_counts is not assumed to be
    in decreasing order of counts.
 The table Btbl would normally be computed by the function BT().
 Returns a Float64.
 """
-function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+function PCcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Float64,2} )
   #println("PCcfg: N: ",N,"  K: ",K,"  allele_counts: ",transpose(allele_counts))
   L = length( allele_counts )
   S = sum( allele_counts )
@@ -207,14 +217,14 @@ function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Fl
   return tmp > 0.0 ? Btbl[K-L,N-S]/allele_counts[end]/tmp : 0.0
 end
 
-@doc """ PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Rational{Int128},2} )
+@doc """ PCcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Rational{Int128},2} )
 Returns the conditional probability of allele_counts[end] given allele_counts[1:(end-1)]
 Note that allele_counts is ordered which means that allele_counts is not assumed to be
    in decreasing order of counts.
 The table Btbl would normally be computed by the function BTr().
 Returns a rational.
 """
-function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Rational{Int128},2} )
+function PCcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Rational{Int128},2} )
   L = length( allele_counts )
   S = sum( allele_counts )
   Sr = S - allele_counts[end]  # sum except for last
@@ -234,18 +244,21 @@ function Rsample( N::Int64, K::Int64, Btbl::Array{Float64,2} )
   if K == 1
     return [N]
   end
-  alleles = zeros(Int64,K)
+  alleles = zeros(ConfigInt,K)
   for k = 1:K
     r = rand()
     n = 1
     cumm = 0.0
     while n < N && r > cumm
       alleles[k] = n
+      #println("k:",k,"  n:",n,"  alleles[1:k]:",alleles[1:k],"  type:",typeof(alleles[1:k]))
       pc = PCcfg( N, K, alleles[1:k], Btbl )
       cumm += pc
+      #println("pc: ",pc,"  cumm: ",cumm)
       n += 1
     end
   end
+  #println("Rsample alleles: ",transpose(alleles))
   alleles
 end
 
@@ -263,7 +276,18 @@ function factorial128( n::Int64 )
   f
 end
 
-@doc """ function number_orders( allele_counts::Vector{Int64} )
+@doc """ function factorialF( n::Int64 )
+  Doesn't overflow up to n == 32
+"""
+function factorialF( n::Int64 )
+  f = 1.0
+  for i = 2:n
+    f *= i
+  end
+  f
+end
+
+@doc """ function number_orders( allele_counts::Vector{ConfigInt} )
 Returns the number of ordered allele_count configurations per unordered configurations.
 Examples:
 julia> number_orders([1,3,2])
@@ -274,7 +298,7 @@ julia> number_orders([1,4,1])
 3
 TODO:  Revise algorithm to reduce level of overflow.
 """
-function number_orders( allele_counts::Vector{Int64} )
+function number_orders( allele_counts::Vector{ConfigInt} )
   counts = zeros(Int64,maximum(allele_counts))
   for a in allele_counts
     counts[a] += 1
@@ -289,11 +313,37 @@ function number_orders( allele_counts::Vector{Int64} )
   div(factorial128(length(allele_counts)),p)
 end
 
+@doc """ function number_ordersF( allele_counts::Vector{ConfigInt} )
+Returns the number of ordered allele_count configurations per unordered configurations as a Float64
+Examples:
+julia> number_ordersF([1,3,2])
+6
+julia> number_ordersF([2,2,2])
+1
+julia> number_ordersF([1,4,1])
+3
+TODO:  Revise algorithm to reduce level of overflow.
+"""
+function number_ordersF( allele_counts::Vector{ConfigInt} )
+  counts = zeros(Int64,maximum(allele_counts))
+  for a in allele_counts
+    counts[a] += 1
+  end
+  #counts = count_duplicates( allele_counts )
+  p = 1.0
+  for c in counts
+    if c > 1
+      p *= factorialF(c)
+    end
+  end
+  factorialF(length(allele_counts))/p
+end
+
 # Move to test functions or delete
 function test_Rsample( N::Int64, K::Int64, nreps::Int64 )
   Btbl = BT(K,N)
-  dictc = Dict{Vector{Int64},Int64}()
-  dictf = Dict{Vector{Int64},Float64}()
+  dictc = Dict{Config,Int64}()
+  dictf = Dict{Config,Float64}()
   for K = 1:nreps
     sample = sort(Rsample(N,K,Btbl),rev=true)
     val = get(dictc,sample,0)
@@ -311,7 +361,7 @@ function test_Rsample( N::Int64, K::Int64, nreps::Int64 )
 end
 
 # Move to test functions or delete
-function test_montecarlo( allele_counts::Vector{Int64}, nreps::Int64 )
+function test_montecarlo( allele_counts::Config, nreps::Int64 )
   #N = sum(allele_counts)
   dict = test_Rsample( sum(allele_counts), length(allele_counts), nreps )
   ac32 = Int32[ c for c in allele_counts ]

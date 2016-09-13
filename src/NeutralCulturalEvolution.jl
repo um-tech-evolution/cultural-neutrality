@@ -2,6 +2,7 @@ module NeutralCulturalEvolution
 include("aliases.jl")
 include("neutral_poplist.jl")
 include("conformist_poplist.jl")
+include("nearly_neutral_poplist.jl")
 include("freq_scaled_fitness.jl")
 include("slatkin_C.jl")
 include("watterson.jl")

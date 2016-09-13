@@ -33,8 +33,8 @@ end
 # May occasionally fail since watterson_sample is stochastic
 context("Watterson exact and sample") do
   for i = 1:length(C8)
-    we = watterson_exact_gt( C8[i], Btbl )
-    ws = watterson_sample_gt( C8[i], 100000,  Btbl )
+    we = watterson_exact( C8[i], Btbl )
+    ws = watterson_sample( C8[i], 100000,  Btbl )
     println("we: ",we,"  ws: ",ws)
     @fact abs(we-ws) --> less_than( 0.02 )
   end

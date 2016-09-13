@@ -21,19 +21,39 @@ function gen_data( ntrials::Int64, cpower_list::Vector, means_list::Vector, stdd
 	df = DataFrame()
 	M = ntrials*length(cpower_list)
 	cpower = []
-	for c in cpower_list
-		cpower = vcat( cpower, [c for j = 1:ntrials] )   
+  means = []
+	w_homoz = []
+	s_homoz = []
+  i = 1
+	for i = 1:length(cpower_list)
+	#for c in cpower_list
+		cpower = vcat( cpower, [cpower_list[i] for j = 1:ntrials] )   
+		means = vcat( means, [means_list[i] for j = 1:ntrials] )   
+		w_homoz = vcat( w_homoz, [ 1.0/(1.0+stddv*(2.0*rand()-1.0) + means_list[i]) for j = 1:ntrials ] )
+		s_homoz = vcat( s_homoz, [ stddv*(2.0*rand()-1.0) + means_list[i] for j = 1:ntrials ] )
+    i+= 1
 	end
+  println("mean(w_homoz): ",mean(w_homoz))
+  println("mean(s_homoz): ",mean(s_homoz))
 	df[:cpower] = cpower
 	N_list = [ N for j =1:M]
 	df[:N] = N_list 
-	N_mu_list = [ N_mu for j = 1:M ]
-	df[:N_mu] = N_mu_list
-	w_theta = []
+	N_N_mu_list = [ N_mu for j = 1:M ]
+	df[:N_mu] = N_N_mu_list
+	df[:means] = means
+  df[:stddv] = [ stddv for j = 1:M ]
+  #=
+	w_homoz = []
+	s_homoz = []
 	for i = 1:length(cpower_list)
-		w_theta = vcat( w_theta, [ stddv*randn() + means_list[i] for j = 1:ntrials ] )
+		w_homoz = vcat( w_homoz, [ 1.0/(1.0+stddv*rand() + means_list[i]) for j = 1:ntrials ] )
+		s_homoz = vcat( s_homoz, [ stddv*rand() + means_list[i] for j = 1:ntrials ] )
 	end
-	df[:w_theta] = w_theta
+  =#
+  s_prob = [ rand() for j = 1:M ] 
+	df[:w_homoz] = w_homoz
+	df[:s_homoz] = s_homoz
+	df[:s_prob] = s_prob
 	df
 end
 
@@ -47,8 +67,8 @@ function gendata(simname)
   if length(cp_list) != length(mean_list)
     error("The lengths of cp_list and mean_list must be equal in function gen_data.")
   end
-  # The values of T, cp_list, mean_list, stddv, N_list, mu_list are specified in  $(simname).jl.
-	gen_data( T, cp_list, mean_list, stddv, N_list[1], mu_list[1] )
+  # The values of T, cp_list, mean_list, stddv, N_list, N_mu_list are specified in  $(simname).jl.
+	gen_data( T, cp_list, mean_list, stddv, N_list[1], N_mu_list[1] )
 end
 
 # Handles the command-line invocation.  Note that a command line argument must be supplied.

@@ -1,5 +1,7 @@
 #=
-Analyzes the CSV file produced by running simulation.jl and run.jl.
+Nearly neutral version:  8/30/16
+
+Analyzes the CSV file produced by running simulation.jl and run.jl, followed by signficance.jl
 This CSV file must include the case where cpower == 0 or acer_C == 0 
   which is the unbiased tranmission case.
 If the neutral infinite alleles model holds, then the expected homozygosity is 1.0/(1.0+theta)
@@ -13,9 +15,22 @@ theta == 0.0 against the alternatives:
 Also applies the Slatkin "exact" test (more precicely, the Monte Carlo extension) to the
 same null and alternative hypotheses.
 
-In the resulting table,  wq_lo is the wq_lo quantile and wq_hi is the wq_hi quantile.
-For the null hypothesis  cpower==0, wq_lo is critcal theta value for the theta<0 alternative hypothesis,
-  and wp_hi is the critical theta value for the theta>0 alternative hypothesis.
+The mean, lo_quantile, hi_quantile, and type 2 error are computed for the following:
+  * watterson_homozygosity (w_homoz, wz)
+  * slatkin exact test probability (s_prob, sp)
+  * slatkin exact probability by my program (se_prob, se) # should be very close to s_prob
+  * watterson probability by my program (we_prob, we)  
+  * p-homozygosity for the last name in the dataframe (p_?_?)
+
+Note that the w_homoz_sig column of the CSV file produced by significance.jl are 
+    1 when w_homoz significantly rejects the null hypothesis  (1-sided test), 
+    0 when w_homoz does not significantly reject the null hypothesis  (1-sided test), 
+The same is true for the p_?_?_sig column.
+
+The mean_w_sig column is the mean of the w_homoz_sig column of CSV file produced by significance.jl,
+and the mean_p_sig column is the mean of the p_?_?_sig column of CSV file produced by significance.jl.
+The diff_sig column is the count of how many times these columns are different.
+
 A type I error is the incorrect rejection of a true null hypothesis, and a type II error is the failure
   to reject a false null hypothesis.
 We assume a lo_val type I error probability, and compute the type II error probability using the wq_lo 
@@ -34,88 +49,78 @@ Writes results as a data frame to stdout, and to a CSV file ""$(simname)_hypdf.c
 =#
 
 using DataFrames
+include("../src/NeutralCulturalEvolution.jl")
 include("dataframe_io.jl")
 
-#TODO:  consider consolidating the "count_more" and "count_less" functions
-
-const lo_val = 0.05         # Tests are at the 5% confidence level
-const hi_val = 1.0-lo_val
-
-@doc """ function(count_more_w_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, wq_lo::Float64 )
-
-Counts the number of alternative hypothesis outcomes (assuming N, N_mu, cpower as specified)
-  which have a w_homo value greater than wq_lo where wq_lo is the lo_val critical value for
-  the null hypothesis.
+@doc """ function count_field_accept( lo_val::Float64, hi_val::Float64, df, ffield::Symbol, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64 )
+  Given a cvalue, a value of N, and a value of N_mu, count the number of times that the test selected by the ffield.
+  If lo_val > 0.0 and hi_val == 1.0, one-sided low.
+  If lo_val == 0.0 and hi_val < 1.0, one-sided high.
+  If lo_val >0.0 and hi_val < 1.0, two-sided high.
 """
-function count_more_w_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, wq_lo::Float64 )
-  countnz( (df[:N].==N)&(df[:N_mu].==N_mu)&(df[c_symbol].==cvalue)&(df[:w_homoz].>wq_lo))
-end
 
-@doc """ function count_less_w_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, wq_hi::Float64 )
-
-Counts the number of alternative hypothesis outcomes (assuming N, N_mu, cpower as specified)
-  which have a w_homo value less than wq_hi where wq_hi is the lo_val critical value for
-  the null hypothesis.
-"""
-function count_less_w_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, wq_hi::Float64 )
-  countnz( (df[:N].==N)&(df[:N_mu].==N_mu)&(df[c_symbol].==cvalue)&(df[:w_homoz].<wq_hi))
-end
-
-@doc """ function(count_more_s_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, sq_lo::Float64 )
-
-Counts the number of alternative hypothesis outcomes (assuming N, N_mu, cpower as specified)
-  which have a s_homo value greater than sq_lo where sq_lo is the lo_val critical value for
-  the null hypothesis.
-"""
-function count_more_s_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, sq_lo::Float64 )
-  countnz( (df[:N].==N)&(df[:N_mu].==N_mu)&(df[c_symbol].==cvalue)&(df[:s_homoz].>sq_lo))
-end
-
-@doc """ function count_less_s_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, sq_hi::Float64 )
-
-Counts the number of alternative hypothesis outcomes (assuming N, N_mu, cpower as specified)
-  which have a s_homo value less than sq_hi where sq_hi is the lo_val critical value for
-  the null hypothesis.
-"""
-function count_less_s_homo( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64, sq_hi::Float64 )
-  countnz( (df[:N].==N)&(df[:N_mu].==N_mu)&(df[c_symbol].==cvalue)&(df[:s_homoz].<sq_hi))
-end
-
-@doc """ function s_prob_accept( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64 )
-  Given a cvalue, a value of N, and a value of N_mu, count the number of times that the Slatkin
-    test is accepted at the two-sided lo_val level.
-"""
-function count_s_prob_accept( df, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64 )
-  countnz( (df[:N].==N)&(df[:N_mu].==N_mu)&(df[c_symbol].==cvalue)&(df[:s_prob].>(lo_val/2.0))&(df[:s_prob].<(1.0-lo_val/2.0)))
+function count_field_accept( df, lo_val::Float64, hi_val::Float64, ffield::Symbol, cvalue::Number, c_symbol::Symbol, N::Int64, N_mu::Float64 )
+#function count_field_accept_2sided( df, ffield::Symbol, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64 )
+  #println("ffield: ",ffield,"  df[c_symbol]:",length(df[c_symbol]),"  df[ffield]:",length(df[ffield]))
+  #println("count_field_accept: lo_val: ",lo_val,"  hi_val: ",hi_val)
+  countnz( (df[:N].==N)&(df[:N_mu].==N_mu)&(df[c_symbol].==cvalue)&(df[ffield].>lo_val)&(df[ffield].<hi_val))
 end
 
 @doc """ function hyptest_results( df )
-
 Returns a data frame that includes the lo_val and 1.0-lo_val quantiles of the null hypothesis distribution
   and the alternative hypothesis distributions.
 Includes zero arrays for the Watterson and Slatkin homozygosity type 2 error and the Slatkin probability type 2 error.
   These will be computered later.
 """
-function hyptest_results( df::DataFrame, c_symbol::Symbol )
+function hyptest_results( df::DataFrame, lo_val::Float64, hi_val::Float64, c_symbol::Symbol, p_sig_symbol::Symbol=:none )
+  lo_quantile = lo_val > 0.0 ? lo_val : (1.0-hi_val)
+  hi_quantile = hi_val < 1.0 ? hi_val : 1.0-lo_val
+  println("lo_quantile: ",lo_quantile,"  hi_quantile: ",hi_quantile)
+  # Note that c_symbol might be :cpower or :acer_C or :nn_select.  
   result_df = by(df, [ c_symbol, :N_mu, :N ] ) do d
-    DataFrame(
-      #theta = 
+    if p_sig_symbol != :none
+      p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
+    end
+    rdf = DataFrame(
+      n = d[:n][1],
       homozyg = 1.0/(1.0 + 2.0*d[:N_mu][1]),
-      mean_w_homo=mean(d[:w_homoz]),
-      wq_lo = quantile(d[:w_homoz],lo_val),
-      wq_hi = quantile(d[:w_homoz],hi_val),
-      w_typ2err = 0.0,
-      mean_s_homo=mean(d[:s_homoz]),
-      sq_lo = quantile(d[:s_homoz],lo_val),
-      sq_hi = quantile(d[:s_homoz],hi_val),
-      s_typ2err = 0.0,
+      mean_w_homoz=mean(d[:w_homoz]),
+      mean_s_homoz=mean(d[:s_homoz]),
+      #wzq_lo = quantile(d[:w_homoz],lo_quantile),
+      #wzq_hi = quantile(d[:w_homoz],hi_quantile),
       mean_s_prob=mean(d[:s_prob]),
-      sp_lo = quantile(d[:s_prob],lo_val),
-      sp_hi = quantile(d[:s_prob],hi_val),
+      #sp_lo = quantile(d[:s_prob],lo_quantile),
+      #sp_hi = quantile(d[:s_prob],hi_quantile),
       sp_t2err = 0.0,
+      #mean_se_prob=mean(d[:se_prob]),
+      #sep_lo = quantile(d[:se_prob],lo_quantile),
+      #sep_hi = quantile(d[:se_prob],hi_quantile),
+      #sep_t2err = 0.0,
+      #mean_we_prob=mean(d[:we_prob]),
+      #wep_lo = quantile(d[:we_prob],lo_quantile),
+      #wep_hi = quantile(d[:we_prob],hi_quantile),
+      #wep_t2err = 0.0
     )
+    if p_sig_symbol != :none
+      rdf[:p_sym_mean]=mean(d[p_symbol])
+      rdf[:p_sym_lo] = quantile(d[p_symbol],lo_quantile)
+      rdf[:p_sym_hi]= quantile(d[p_symbol],hi_quantile)
+      rdf[:p_sym_t2err ]= 0.0
+      rdf[:mean_w_sig]=mean(d[:w_homoz_sig])
+      rdf[:mean_p_sig]=mean(d[p_sig_symbol])
+      rdf[:diff_sig]= countnz( abs(d[p_sig_symbol]-d[:w_homoz_sig]) )
+    end
+    rdf
+    #=
+      p_sym_mean=mean(d[p_symbol]),
+      p_sym_lo = quantile(d[p_symbol],lo_quantile),
+      p_sym_hi = quantile(d[p_symbol],hi_quantile),
+      p_sym_t2err = 0.0,
+      mean_w_sig=mean(d[:w_homoz_sig]),
+      mean_p_sig=mean(d[p_sig_symbol]),
+      diff_sig = countnz( abs(d[p_sig_symbol]-d[:w_homoz_sig]) ),
+    =#
   end
-  #result_df[ df[c_symbol].==0.0 ]
   result_df
 end
 
@@ -127,44 +132,98 @@ For the alternative hypothesis rows, this is the type II error corresponding to 
   probability of lo_val1.
 """
 function hyptest( simname )
+  global t2error_sides
+  println("simname: ",simname)
 	include("$(simname).jl")
-	M = length(N_list)*length(N_mu_list)  # number of cases of N times number of cases of N_mu
-	df = readtable("$(simname).csv", makefactors=true, allowcomments=true)
+  if !isdefined( :t2error_sides )
+    t2error_sides = 2     # use 2-sided if not specified.
+    println("setting t2error_sides = 2")
+  end
+  println("t2error_sides: ",t2error_sides)
+  if isdefined(:cp_list)  # power conformity
+    if minimum( cp_list ) < 0.0 && maximum( cp_list ) > 0.0
+      error("power conformity parameters must either be all nonnegative or all nonpositive")
+    end
+    positive_conformity = ( maximum( cp_list ) > 0 )   # Boolean variable
+  elseif isdefined(:acer_C_list)  # Acerbi conformity
+    if minimum( acer_C_list ) < 0.0 && maximum( acer_C_list ) > 0.0
+      error("Acerbi conformity parameters must either be all nonnegative or all nonpositive")
+    end
+    positive_conformity = ( maximum( acer_C_list ) > 0 )   # Boolean variable
+  end
+  if t2error_sides == 1  
+    if positive_conformity
+      lo_val = 0.0
+      hi_val = 1.0-sig_level
+    else
+      lo_val = sig_level
+      hi_val = 1.0
+    end
+  elseif t2error_sides == 2
+    lo_val = sig_level/2.0
+    hi_val = 1.0 - lo_val
+  end
+  println("lo_val: ",lo_val,"  hi_val: ",hi_val)
+	M = length(n_list)*length(N_mu_list)  # number of cases of n times number of cases of N_mu
+  sigtest = isdefined(:sig_colsyms) && length(sig_colsyms) > 0
+  println("sigtest: ",sigtest)
+  if sigtest
+	  df = readtable("$(simname)_sigtest.csv", makefactors=true, allowcomments=true)
+  else
+	  df = readtable("$(simname).csv", makefactors=true, allowcomments=true)
+  end
   if findfirst(names(df),:cpower) > 0   # power model of conformity
     c_symbol = :cpower
   elseif findfirst(names(df),:acer_C) > 0  # Acerbi model of conformity
     c_symbol = :acer_C
+  elseif findfirst(names(df),:nn_select) > 0 
+    c_symbol = :nn_select 
   else
-    error( "file $(simname).csv must contain a column named either :cpower or :acer_C ")
+    error( "file $(simname).csv must contain a column named one of :cpower, :acer_C, or :nn_select ")
   end
-	hypdf = hyptest_results( df, c_symbol )
+  if sigtest
+    p_sig_symbol = names(df)[end]  # assume that the last name is the p_homozygosity symbol
+    p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
+    println("p_sig_symbol: ",names(df)[end])
+	  hypdf = hyptest_results( df, lo_val, hi_val, c_symbol, p_sig_symbol )
+  else
+	  hypdf = hyptest_results( df, lo_val, hi_val, c_symbol )
+  end
   sort!(hypdf,cols=[order(c_symbol,by=abs)])
 	check_zero_first( M, hypdf, c_symbol )
-	w_typ2err = zeros(Float64,size(hypdf,1))
-	for i = 1:size(hypdf,1)
-    if hypdf[c_symbol][i] > 0.0  # conformity 
-      hypdf[:w_typ2err][i] = count_less_w_homo( df, hypdf[c_symbol][i], c_symbol, hypdf[:N][i],hypdf[:N_mu][i],hypdf[:wq_hi][(i-1)%M+1] )/Float64(T)
-    elseif hypdf[c_symbol][i] < 0.0  # anti-conformity
-      hypdf[:w_typ2err][i] = count_more_w_homo( df, hypdf[c_symbol][i], c_symbol, hypdf[:N][i],hypdf[:N_mu][i],hypdf[:wq_lo][(i-1)%M+1] )/Float64(T)
+  if sigtest
+    #fields = [:s_prob, :se_prob, :we_prob, p_symbol]
+    #t2_fields = [:sp_t2err, :sep_t2err, :wep_t2err, :p_sym_t2err ]  #TODO: define these automatically
+    fields = [:s_prob, p_symbol]
+    t2_fields = [:sp_t2err, :p_sym_t2err ]  #TODO: define these automatically
+  else
+    #fields = [:s_prob, :se_prob, :we_prob ]
+    #t2_fields = [:sp_t2err, :sep_t2err, :wep_t2err ]  #TODO: define these automatically
+    fields = [:s_prob]
+    t2_fields = [:sp_t2err]
+  end
+  for j = 1:length(fields)
+	  for i = 1:size(hypdf,1)
+      hypdf[t2_fields[j]][i] = count_field_accept(df, lo_val, hi_val, fields[j], hypdf[c_symbol][i], c_symbol, hypdf[:N][i], hypdf[:N_mu][i] )/Float64(T)
+      #hypdf[t2_fields[j]][i] = count_field_accept(df, lo_2sided, hi_2sided, fields[j], hypdf[c_symbol][i], c_symbol, hypdf[:N][i], hypdf[:N_mu][i] )/Float64(T)
     end
 	end
-	s_typ2err = zeros(Float64,size(hypdf,1))
-	for i = 1:size(hypdf,1)
-    if hypdf[c_symbol][i] > 0.0  # conformity
-      hypdf[:s_typ2err][i] = count_less_s_homo( df, hypdf[c_symbol][i], c_symbol, hypdf[:N][i],hypdf[:N_mu][i],hypdf[:sq_hi][(i-1)%M+1] )/Float64(T)
-    elseif hypdf[c_symbol][i] < 0.0  # anti-conformity
-      hypdf[:s_typ2err][i] = count_more_s_homo( df, hypdf[c_symbol][i], c_symbol, hypdf[:N][i],hypdf[:N_mu][i],hypdf[:sq_lo][(i-1)%M+1] )/Float64(T)
-    end
-	end
-	sp_t2err = zeros(Float64,size(hypdf,1))
-	for i = 1:size(hypdf,1)
-    hypdf[:sp_t2err][i] = count_s_prob_accept(df, hypdf[c_symbol][i], c_symbol, hypdf[:N][i], hypdf[:N_mu][i] )/Float64(T)
-	end
+  if sigtest
+    # Rename the p-homozygsity columns that correspond to p_sig_symbol (see above) to be more meaningful.
+    p_sym_names = [:p_sym_mean, :p_sym_lo, :p_sym_hi, :p_sym_t2err]
+    p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
+    p_sym_string = string(p_symbol)
+    p_new_names = [ symbol("$(p_sym_string)_mean"), symbol("$(p_sym_string)_lo"), symbol("$(p_sym_string)_hi"),
+      symbol("$(p_sym_string)_t2_err") ]
+    rename!( hypdf, p_sym_names, p_new_names )
+  end
 	#writetable("$(simname)_hypdf.csv",hypdf)
-  header_lines = read_headers("$(simname).csv")
-  significance_header = " significance level: $lo_val"
-  push!(header_lines, significance_header )
-  write_dataframe("$(simname)_hypdf.csv",header_lines,hypdf)
+  if sigtest
+    header_lines = read_headers("$(simname)_sigtest.csv")
+  else
+    header_lines = read_headers("$(simname).csv")
+  end
+  write_dataframe("$(simname)_hyptest.csv",header_lines,hypdf)
 	hypdf
 end
 
