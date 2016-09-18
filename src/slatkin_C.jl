@@ -55,6 +55,17 @@ function slatkin_enum( obs_list::Vector{Int64} )
       (Ptr{Int32},), obs)
 end
 
+@doc """ function slatkin_enum( obs_list::Vector{Int32} )
+The exact version of Slatkin "exact" test.
+obs_list    is the given allele count configuration: should be in decreasing order.
+"""
+function slatkin_enum( obs_list::Vector{Int32} )
+  obs = Int32[ 0; sort(obs_list, rev=true); 0 ]
+  
+  ccall((:slatkin_enum, "slatkin_enum.so"), SlatkinEnumResult,
+      (Ptr{Int32},), obs)
+end
+
 @doc """ function slatkin_enum( obs_list::Vector{Int64} )
 The exact version of Slatkin "exact" test.
 obs_list    is the given allele count configuration: should be in decreasing order.

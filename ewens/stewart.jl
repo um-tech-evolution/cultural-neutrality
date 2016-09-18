@@ -156,10 +156,37 @@ function Pcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Float64,2}
   return num/P/Btbl[K,N]
 end
 
+@doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+Returns the probability of an ordered allele count configuration whose length
+    may be less than K and whose sum may be less than N.
+Ordered means that different orders of allele_counts are counted separately.
+Btbl would normally be computed by the function BT.
+"""
+function Pcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+  L = length( allele_counts )
+  S = sum( allele_counts )
+  P = prod( allele_counts )
+  if K-L <= 0 || N-S <= 0
+    num = K-L==0 && N-S==0 ? 1. : 0.0
+  else
+    num = Btbl[K-L,N-S]
+  end
+  return num/P/Btbl[K,N]
+end
+
 @doc """ function Pcfg( allele_counts::Config, Btbl::Array{Float64,2} )
 Assumes that N and K are the sum and length of allele_counts respectively.
 """
 function Pcfg( allele_counts::Config, Btbl::Array{Float64,2} )
+  N = convert(Int64,sum(allele_counts))
+  K = length(allele_counts)
+  Pcfg(N,K,allele_counts,Btbl)
+end
+
+@doc """ function Pcfg( allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+Assumes that N and K are the sum and length of allele_counts respectively.
+"""
+function Pcfg( allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
   N = convert(Int64,sum(allele_counts))
   K = length(allele_counts)
   Pcfg(N,K,allele_counts,Btbl)
@@ -217,6 +244,25 @@ function PCcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Float64,2
   return tmp > 0.0 ? Btbl[K-L,N-S]/allele_counts[end]/tmp : 0.0
 end
 
+@doc """ function PCcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Float64,2} )
+Returns the conditional probability of allele_counts[end] given allele_counts[1:(end-1)]
+Note that allele_counts is ordered which means that allele_counts is not assumed to be
+   in decreasing order of counts.
+The table Btbl would normally be computed by the function BT().
+Returns a Float64.
+"""
+function PCcfg( N::Int64, K::Int64, allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
+  #println("PCcfg: N: ",N,"  K: ",K,"  allele_counts: ",transpose(allele_counts))
+  L = length( allele_counts )
+  S = sum( allele_counts )
+  Sr = S - allele_counts[end]  # sum except for last
+  if K-L <= 0 || N-S <= 0
+    return K-L==0 && N-S==0 ? 1.0 : 0.0
+  end
+  tmp = Btbl[K-L+1,N-Sr] 
+  return tmp > 0.0 ? Btbl[K-L,N-S]/allele_counts[end]/tmp : 0.0
+end
+
 @doc """ PCcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Rational{Int128},2} )
 Returns the conditional probability of allele_counts[end] given allele_counts[1:(end-1)]
 Note that allele_counts is ordered which means that allele_counts is not assumed to be
@@ -244,7 +290,7 @@ function Rsample( N::Int64, K::Int64, Btbl::Array{Float64,2} )
   if K == 1
     return [N]
   end
-  alleles = zeros(ConfigInt,K)
+  alleles = zeros(Int64,K)
   for k = 1:K
     r = rand()
     n = 1

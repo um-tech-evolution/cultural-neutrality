@@ -70,28 +70,26 @@ Returns the sum of the probabilities of the allele configurations
 The result can be used in a two-sided test of the neutral null hypothesis.
 For example, if the result is less than 0.025 or greater than 0.975, one could reject the null hypothesis 
 at the 0.05 level.
-This function gives incorrect results because the method does not work correctly.
+TODO:  Add the Watterson probability which is included in Slatkin's code.
 """
-function slatkin_sample( allele_counts::Config, nreps::Int64, Btbl::Array{Float64,2} )
-  N = convert(Int64,sum(allele_counts))
+function slatkin_sample( allele_counts::Vector{Int64}, nreps::Int64, Btbl::Array{Float64,2} )
+  N = sum(allele_counts)
   K = length(allele_counts)
-  #pkey = get( samples.dict, sort(allele_counts,rev=true), 0.0 )
-  pkey = Pcfg( N, K, allele_counts, Btbl )
-  println("pkey: ",pkey)
-  #pkey /= number_ordersF(allele_counts)
-  sum_fit = 0.0
-  ssum = 0.0
+  w_allele_counts =  watterson_homozygosity(allele_counts)
+  pkey = 1.0/prod(allele_counts)
+  e_count = 0
+  f_count = 0
   for j = 1:nreps
-    sample = sort(Rsample(N,K,Btbl),rev=true)
-    fit_unordered = Pcfg(N,K,sample,Btbl)
-    fit_ordered = fit_unordered*number_ordersF(sample)
-    sum_fit += fit_ordered
-    if  fit_unordered < pkey 
-      ssum += fit_ordered
+    sample = Rsample(N,K,Btbl)
+    if 1.0/prod(sample) <= pkey
+      e_count += 1
+    end
+    if watterson_homozygosity(sample) <= w_allele_counts
+      f_count += 1
     end
   end
-  println("sum_fit: ",sum_fit)
-  ssum/sum_fit
+  nrepsf = convert(Float64,nreps)
+  (e_count/nrepsf, f_count/nrepsf)
 end
 
 @doc """ function slatkin_exact( allele_counts::Config, Btbl::Array{Float64,2}, C::ConfigList=ConfigList() )
@@ -129,10 +127,11 @@ For example, if the result is greater than 0.95, one could reject the null hypot
    alternative that the homozygosity is too large to be neutral at the 0.05 level.
 This function is inaccurate for large N because configurations with low probability are not sufficiently sampled.
 """
-function watterson_sample( allele_counts::Config, samples::rsamples_result;
+function watterson_sample( allele_counts::Config;
     lte::Function=islessequal )
   N = sum(allele_counts)
   K = length(allele_counts)
+  w_allele_counts =  watterson_homozygosity(allele_counts)
   pkey = get( samples.dict, sort(allele_counts,rev=true), 0.0 )
   pkey /= number_ordersF(allele_counts)
   w_allele_counts =  watterson_homozygosity(allele_counts)
