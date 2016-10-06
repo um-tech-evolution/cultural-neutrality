@@ -180,7 +180,8 @@ Assumes that N and K are the sum and length of allele_counts respectively.
 function Pcfg( allele_counts::Config, Btbl::Array{Float64,2} )
   N = convert(Int64,sum(allele_counts))
   K = length(allele_counts)
-  Pcfg(N,K,allele_counts,Btbl)
+  #r1 =Pcfg(N,K,allele_counts,Btbl)
+  1.0/Btbl[K,N]/prod(allele_counts)
 end
 
 @doc """ function Pcfg( allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
@@ -189,7 +190,8 @@ Assumes that N and K are the sum and length of allele_counts respectively.
 function Pcfg( allele_counts::Vector{Int64}, Btbl::Array{Float64,2} )
   N = convert(Int64,sum(allele_counts))
   K = length(allele_counts)
-  Pcfg(N,K,allele_counts,Btbl)
+  #r1 =Pcfg(N,K,allele_counts,Btbl)
+  1.0/Btbl[K,N]/prod(allele_counts)
 end
 
 @doc """ function Pcfg( N::Int64, K::Int64, allele_counts::Config, Btbl::Array{Rational{Int128},2} )
@@ -371,6 +373,24 @@ julia> number_ordersF([1,4,1])
 TODO:  Revise algorithm to reduce level of overflow.
 """
 function number_ordersF( allele_counts::Vector{ConfigInt} )
+  counts = zeros(Int64,maximum(allele_counts))
+  for a in allele_counts
+    counts[a] += 1
+  end
+  #counts = count_duplicates( allele_counts )
+  p = 1.0
+  for c in counts
+    if c > 1
+      p *= factorialF(c)
+    end
+  end
+  factorialF(length(allele_counts))/p
+end
+
+@doc """ function number_ordersF( allele_counts::Vector{Int64} )
+Version of number_ordersF which takes of vector of Int64's as an argument
+"""
+function number_ordersF( allele_counts::Vector{Int64} )
   counts = zeros(Int64,maximum(allele_counts))
   for a in allele_counts
     counts[a] += 1
