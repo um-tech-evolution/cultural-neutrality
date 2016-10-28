@@ -106,7 +106,7 @@ function slatkin_exact( allele_counts::Config, Btbl::Array{Float64,2}, C::Config
   if length(C) == 0
     C = ncfgs( N, K )    # All allele count configs for the given values of N and K
   end
-  P = map(c->Pcfg(N,K,c,Btbl),C)   # table of probabilities of configs
+  P = map(c->Pcfg(c,Btbl),C)   # table of probabilities of configs
   p_alleles = Pcfg(N,K,allele_counts,Btbl)
   ssum = 0.0
   for i = 1:length(C)

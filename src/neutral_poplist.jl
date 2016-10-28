@@ -10,13 +10,18 @@ using DataStructures
 
 @doc """ function simple_poplist( N::Int64, mu_per_locus::Float64, ngens::Int64, burn_in::Int64 )
 No-frills implmentation of Wright-Fisher infinite alleles model.
+If combine==true, returns a single combined population of the populations from all ngens generations after burn in.
+If combine==false, returns a list of ngens populations.
 """
 
-function simple_poplist( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::Float64=1.0 )
+function simple_poplist( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::Float64=2.0, combine::Bool=true )
   int_burn_in = Int(round(N*burn_in))
   mu = mu_per_pop/N
   #println("int_burn_in: ",int_burn_in,"  mu: ",mu)
   poplist= Population[ collect(1:N) ]
+  if combine
+    pop_result = Population()
+  end
   new_id = N+1
   for g = 2:(ngens+int_burn_in)
     result = zeros(Int64,N)
@@ -29,9 +34,21 @@ function simple_poplist( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::F
       end
     end
     push!(poplist,result)
+    if combine && g > int_burn_in+1
+      println("combine: ", g)
+      pop_result = vcat( pop_result, result )
+    end
   end
-  poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
 end 
+
+function simple_combined_pop( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::Float64=1.0 )
+  combine_pops( simple_poplist( N, mu_per_pop, ngens, burn_in=burn_in ) )
+end
 
 @doc """ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=N, uniform_start::Bool=false,
     popsize_ratio::Float64=1.0 )
@@ -144,6 +161,9 @@ function poplist_counts64( poplst::PopList )
   pop_counts64( combined_pop )
 end
 
+@doc """ function ewens_K_est( theta::Float64, N::Int64 )
+Estimate K from theta and N using Ewens formula.
+"""
 function ewens_K_est( theta::Float64, N::Int64 )
   result = 1.0
   for i = 1:(N-1)
@@ -152,8 +172,26 @@ function ewens_K_est( theta::Float64, N::Int64 )
   result
 end
   
-# Take a random sample (with replcement) of size new_size from a population
+@doc """ function sample_population( pop::Population, new_size::Int64 )
+ Take a random sample (with replcement) of size new_size from a population
+"""
 function sample_population( pop::Population, new_size::Int64 )
   indices = rand(1:length(pop),new_size)
   new_pop = [ pop[i] for i in indices ]
 end
+
+@doc """ function combine_pops( poplist::Array{Vector{Int64},1} )
+  Combine a list of populations into a single population
+  Note:  Functions like poplist_counts64 may be preferable.
+"""
+function combine_pops( poplist::Array{Vector{Int64},1} )
+  if length(poplist) == 1
+    return poplist[1]
+  end
+  combined_pop = Int64[]
+  for pop in poplst
+    combined_pop = vcat(combined_pop,pop)
+  end
+  combined_pop
+end
+  

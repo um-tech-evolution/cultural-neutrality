@@ -168,3 +168,44 @@ function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, C:
 end
 
 # TODO:  Check if Kandler's model of conformity agrees with Acerbi's.
+
+function acerbi_mixed_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, 
+    conformist_prob::Float64, anti_conformist_prob::Float64; 
+    toplist_size::Int64=10, 
+    burn_in::Float64=1.0, uniform_start::Bool=false )
+  int_burn_in = Int(round(N*burn_in))
+  if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
+    poplist= Population[ Int64[1 for i = 1:N] ]
+    new_id = 2
+  else
+    poplist= Population[ collect(1:N) ]
+    new_id = N+1
+  end
+  for g = 2:(ngens+int_burn_in)
+    toplist = topKlist( poplist[g-1], toplist_size )
+    result = zeros(Int64,N)
+    for i = 1:N
+      rnd = rand()
+      if rnd < mu  # mutate
+        result[i] = new_id
+        new_id += 1
+      elseif rnd < mu+conformist_prob  # conformist copy
+        if poplist[g-1][i] in toplist
+          result[i] = poplist[g-1][i]  # copy if in toplist
+        else
+          result[i] = poplist[g-1][rand(1:N)]
+        end
+      elseif rnd < mu+conformist_prob+anti_conformist_prob
+        if poplist[g-1][i] in toplist
+          result[i] = poplist[g-1][rand(1:length(poplist[g-1]))]
+        else
+          result[i] = poplist[g-1][i]   # retain trait from previous generation
+        end
+      else     # random copy
+        result[i] = poplist[g-1][rand(1:N)]
+      end
+    end
+    push!( poplist, result )
+  end
+  poplist[int_burn_in+1:end]
+end

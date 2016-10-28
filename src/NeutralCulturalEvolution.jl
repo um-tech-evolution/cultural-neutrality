@@ -11,6 +11,7 @@ include("../ewens/slatkin_J.jl")
 include("../ewens/stewart.jl")
 include("../ewens/slatpart.jl")
 include("../ewens/stirling1.jl")
+include("../Rcall/poweRlaw.jl")
 
 end
 
