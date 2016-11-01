@@ -3,20 +3,22 @@ Simulate the infinite alleles model (which is the Wright-Fisher model with infin
 This is a single locus model.  Haploidy is assumed---which means that genotypes are not in diploid pairs.
 =#
 export neutral_poplist, pop_counts8, pop_counts32,  pop_counts64, poplist_counts32, 
-    poplist_counts64, simple_poplist, ewens_K_est, sample_population
+    poplist_counts64, simple_poplist, ewens_K_est, sample_population, combine_pops, simple_combined_pop
 
 using DataStructures
 #using DataFrames
 
 @doc """ function simple_poplist( N::Int64, mu_per_locus::Float64, ngens::Int64, burn_in::Int64 )
 No-frills implmentation of Wright-Fisher infinite alleles model.
+N is the population size
+N_mu is the per-population  mutation rate,  the per individual mutation rate is N_mu/N.
 If combine==true, returns a single combined population of the populations from all ngens generations after burn in.
 If combine==false, returns a list of ngens populations.
 """
 
-function simple_poplist( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::Float64=2.0, combine::Bool=true )
+function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=2.0, combine::Bool=true )
   int_burn_in = Int(round(N*burn_in))
-  mu = mu_per_pop/N
+  mu = N_mu/N
   #println("int_burn_in: ",int_burn_in,"  mu: ",mu)
   poplist= Population[ collect(1:N) ]
   if combine
@@ -34,8 +36,7 @@ function simple_poplist( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::F
       end
     end
     push!(poplist,result)
-    if combine && g > int_burn_in+1
-      println("combine: ", g)
+    if combine && g >= int_burn_in+1
       pop_result = vcat( pop_result, result )
     end
   end
@@ -46,33 +47,39 @@ function simple_poplist( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::F
   end
 end 
 
-function simple_combined_pop( N::Int64, mu_per_pop::Float64, ngens::Int64; burn_in::Float64=1.0 )
-  combine_pops( simple_poplist( N, mu_per_pop, ngens, burn_in=burn_in ) )
+function simple_combined_pop( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=1.0 )
+  combine_pops( simple_poplist( N, N_mu, ngens, burn_in=burn_in ) )
 end
 
 @doc """ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=N, uniform_start::Bool=false,
-    popsize_ratio::Float64=1.0 )
+    popsize_ratio::Float64=1.0, combine::Bool=true )
 
 Run the infinite alleles model as a simulation. This is a 1-locus model.
 Allele values are represented by positive integers, and populations are list of positive integers.
 The result is a list of Populations, one per generation.
 N is the population size, or the initial population size if popsize_ratio != 1.0 (see below)  
-mu is the mutation rate, or the initial mutation rate if popsize_ratio != 1.0 (see below)
-ngens is the number of generations.
+N_mu is the per-population  mutation rate, or the initial mutation rate if popsize_ratio != 1.0 (see below)
+ngens is the number of generations returned.
 burn_in specifies the number of generations of "burn" in as a multiple of N (1.0 means 1.0*N generations of burn in): 
     these generations are not part of the returned matrix and are not counted in ngens.
 uniform_start == true means that the inital population is all ones.
 popsize_ratio != 1.0 means that the popsize grows (or shrinks) geometrically with this ratio.
+If combine==true, returns a single combined population of the populations from all ngens generations after burn in.
+If combine==false, returns a list of ngens populations.
 """
-function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=1.0, uniform_start::Bool=false,
-    popsize_ratio::Float64=1.0 )
+function neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=1.0, uniform_start::Bool=false,
+    popsize_ratio::Float64=1.0, combine::Bool=true )
   int_burn_in = Int(round(N*burn_in))
+  mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a bottleneck.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
   else
     poplist= Population[ collect(1:N) ]
     new_id = N+1
+  end
+  if combine
+    pop_result = Population()
   end
   popsize = N
   for g = 2:(ngens+int_burn_in)
@@ -90,8 +97,15 @@ function neutral_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=
       end
     end
     push!(poplist,result)
+    if combine && g >= int_burn_in+1
+      pop_result = vcat( pop_result, result )
+    end
   end
-  poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
 end
 
 @doc """ function pop_counts32( pop::Population )

@@ -62,7 +62,7 @@ end
 
 type pconform_trial_result
   N::Int64
-  mu::Float64
+  N_mu::Float64
   cpower::Float64 
   watterson_theta::Float64
   slatkin_theta::Float64
@@ -72,7 +72,7 @@ end
 
 type aconform_trial_result
   N::Int64
-  mu::Float64
+  N_mu::Float64
   acer_topsize::Int64 
   acer_C::Float64 
   watterson_theta::Float64
@@ -89,7 +89,7 @@ function writerow_pconform(stream::IOStream, trial::Int64, trial_result::pconfor
   line = join(Any[
     trial,
     trial_result.N,
-    trial_result.mu,
+    trial_result.N_mu,
     trial_result.cpower,
     trial_result.watterson_theta,
     trial_result.slatkin_theta,

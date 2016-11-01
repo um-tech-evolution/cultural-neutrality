@@ -1,6 +1,7 @@
 #= The R library "poweRlaw" must be R installed on the machine where this is run.
 Author:  David Blasen, May 2016
 =#
+export power_law_estimates
 using RCall
 using DataFrames
 R"library(poweRlaw)"

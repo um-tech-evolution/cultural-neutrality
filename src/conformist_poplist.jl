@@ -44,25 +44,31 @@ end
 @doc """funcction power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0 )
 
 N:      population size
-mu:     mutation rate
+N_mu:   per-population mutation rate.  The per-individual mutation rate mu = N_mu/N.
 ngens:  number of Populations in returned list
 Return a Population list using the power conformist copying method.
 If  conformist_power == 0.0,  neutral, i. e., neither conformity nor anti-conformity
     conformist_power > 0.0,  conformist:  more likely to choose more frequent alleles from the previous generation
     conformist_power < 0.0,  anti-conformist:  more likely to choose less frequent alleles from the previous generation
 See the documentation and code of function freq_scaled_fitness() for more details.
+If combine==true, returns a single combined population of the populations from all ngens generations after burn in.
+If combine==false, returns a list of ngens populations.
 """
 
-function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=1.0, conformist_power::Float64=0.0,
-    uniform_start::Bool=false )
+function power_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=1.0, conformist_power::Float64=0.0,
+    uniform_start::Bool=false, combine::Bool=true )
   #println("conformist power: ",conformist_power)
   int_burn_in = Int(round(N*burn_in))
+  mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
   else
     poplist= Population[ collect(1:N) ]
     new_id = N+1
+  end
+  if combine
+    pop_result = Population()
   end
   w = fill(1.0,N)
   for g = 2:(ngens+int_burn_in)
@@ -75,8 +81,15 @@ function power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in:
       end
     end
     push!( poplist, new_pop )
+    if combine && g >= int_burn_in+1
+      pop_result = vcat( pop_result, new_pop )
+    end
   end
-  poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
 end
 
 @doc """ function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64, burn_in::Float64=1.0,
@@ -91,15 +104,19 @@ C   is the probability of a conformist copy from the toplist
 toplist_size   is the size of the toplist to use (Acerbi uses 10 for this value).
 """
 
-function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, acer_C::Float64; toplist_size::Int64=10, burn_in::Float64=1.0,
-    uniform_start::Bool=false )
+function acerbi_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, acer_C::Float64; toplist_size::Int64=10, burn_in::Float64=1.0,
+    uniform_start::Bool=false, combine::Bool=true )
   int_burn_in = Int(round(N*burn_in))
+  mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
   else
     poplist= Population[ collect(1:N) ]
     new_id = N+1
+  end
+  if combine
+    pop_result = Population()
   end
   for g = 2:(ngens+int_burn_in)
     result = zeros(Int64,N)
@@ -119,8 +136,15 @@ function acerbi_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, acer_C:
       end
     end
     push!( poplist, result )
+    if combine && g >= int_burn_in+1
+      pop_result = vcat( pop_result, result )
+    end
   end
-  poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
 end
 
 @doc """ function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=10, burn_in::Float64=1.0,
@@ -135,15 +159,19 @@ C   is the probability of a random copy
 toplist_size   is the size of the toplist to use (Acerbi uses 10 for this value).
 """
 
-function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=10, burn_in::Float64=1.0,
-    uniform_start::Bool=false )
+function acerbi_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=10, burn_in::Float64=1.0,
+    uniform_start::Bool=false, combine::Bool=true )
   int_burn_in = Int(round(N*burn_in))
+  mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
   else
     poplist= Population[ collect(1:N) ]
     new_id = N+1
+  end
+  if combine
+    pop_result = Population()
   end
   for g = 2:(ngens+int_burn_in)
     result = zeros(Int64,N)
@@ -163,23 +191,39 @@ function acerbi_anti_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, C:
       end
     end
     push!( poplist, result )
+    if combine && g >= int_burn_in+1
+      pop_result = vcat( pop_result, result )
+    end
   end
-  poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
 end
 
 # TODO:  Check if Kandler's model of conformity agrees with Acerbi's.
-
-function acerbi_mixed_conformist_poplist( N::Int64, mu::Float64, ngens::Int64, 
+@doc """ function acerbi_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, 
     conformist_prob::Float64, anti_conformist_prob::Float64; 
     toplist_size::Int64=10, 
-    burn_in::Float64=1.0, uniform_start::Bool=false )
+    burn_in::Float64=2.0, uniform_start::Bool=false, combine::Bool=true )
+
+"""
+function acerbi_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, 
+    conformist_prob::Float64, anti_conformist_prob::Float64; 
+    toplist_size::Int64=10, 
+    burn_in::Float64=2.0, uniform_start::Bool=false, combine::Bool=true )
   int_burn_in = Int(round(N*burn_in))
+  mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
     new_id = 2
   else
     poplist= Population[ collect(1:N) ]
     new_id = N+1
+  end
+  if combine
+    pop_result = Population()
   end
   for g = 2:(ngens+int_burn_in)
     toplist = topKlist( poplist[g-1], toplist_size )
@@ -206,6 +250,66 @@ function acerbi_mixed_conformist_poplist( N::Int64, mu::Float64, ngens::Int64,
       end
     end
     push!( poplist, result )
+    if combine && g >= int_burn_in+1
+      pop_result = vcat( pop_result, result )
+    end
   end
   poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
 end
+
+
+function power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, 
+    conformist_prob::Float64, anti_conformist_prob::Float64; 
+    conformist_power::Float64=1.0, anti_conformist_power::Float64=1.0,
+    burn_in::Float64=2.0, uniform_start::Bool=false, combine::Bool=true )
+  int_burn_in = Int(round(N*burn_in))
+  mu = N_mu/N
+  if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
+    poplist= Population[ Int64[1 for i = 1:N] ]
+    new_id = 2
+  else
+    poplist= Population[ collect(1:N) ]
+    new_id = N+1
+  end
+  if combine
+    pop_result = Population()
+  end
+  for g = 2:(ngens+int_burn_in)
+    w_conf = fill(1.0,N)
+    w_anti_conf = fill(1.0,N)
+    conf_fitness = freq_scaled_fitness( poplist[g-1], w_conf, conformist_power )
+    anti_conf_fitness = freq_scaled_fitness( poplist[g-1], w_anti_conf, anti_conformist_power )
+    new_conf_pop = propsel( poplist[g-1], conf_fitness )
+    new_anti_conf_pop = propsel( poplist[g-1], anti_conf_fitness )
+    result = zeros(Int64,N)
+    for i = 1:N
+      rnd = rand()
+      if rnd < mu  # mutate
+        result[i] = new_id
+        new_id += 1
+      elseif rnd < mu+conformist_prob  # conformist copy
+        result[i] = new_conf_pop[rand(1:N)]
+      elseif rnd < mu+conformist_prob+anti_conformist_prob
+        result[i] = new_anti_conf_pop[rand(1:N)]
+      else     # random copy
+        result[i] = poplist[g-1][rand(1:N)]
+      end
+    end
+    push!( poplist, result )
+    if combine && g >= int_burn_in+1
+      pop_result = vcat( pop_result, result )
+    end
+  end
+  poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
+end
+
