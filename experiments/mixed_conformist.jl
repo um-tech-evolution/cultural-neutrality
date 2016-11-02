@@ -302,7 +302,8 @@ function run_trials_power_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, n
       conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
       burn_in=burn_in ))
   end
-  filename = "../data/11_2_16/power_mixed_N_$(N)_N_mu_$(N_mu)_ngens_$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_prob)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
+  filename = "../data/11_2_16/power_mixed_N_$(N)_N_mu_$(N_mu)_ngens_$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
+
   if callR
     power_law_estimates( p_counts64, filename )
   else

@@ -24,7 +24,6 @@ function power_law_estimates(data_vector, filename::String="" )
     R"
         plot(m_pl)
         lines(m_pl,col=2)
-        text(4.0,0.01,paste0("alpha:",est_pc$pars))
         dev.off()
     "
     #alpha_vals = rcopy(R"est_scan")
