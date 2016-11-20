@@ -5,7 +5,7 @@ Current objective (as of 10/25/16) is to produce a data frame and corresponding 
 that can be read into the poweRlaw R package.  So I am deleting the Slatkin and Watterson tests.
 =#
 
-date_string = "../data/11_16_16/"   # make sure that  /home/evotech/cultural_neutrality/data/11_4_16 exists"
+date_string = "../data/11_18_16/"   # make sure that  /home/evotech/cultural_neutrality/data/11_18_16 exists"
 println("data string: ",date_string)
 
 
@@ -97,197 +97,6 @@ function write_pcounts( filename::AbstractString, tr::trial_result )
   end
   close(stream)
 end
-
-@doc """ function writerow_pconform(stream::IOStream, trial::Int64, trial_result::pconf_trial_result )
-Write a row to the CSV file for K estimation.
-"""
-#=
-function writerow_pconform(stream::IOStream, trial_result::pconf_trial_result )
-  line = join(Any[
-    trial_result.N,
-    trial_result.mu,
-    trial_result.cpower,
-    2.0*trial_result.mu,
-    trial_result.pcounts
-  ], ",")
-  write(stream, line, "\n")
-end
-=#
-
-@doc """ function writerow_pconform(stream::IOStream, trial::Int64, trial_result::pconf_trial_result )
-Write a row to the CSV file for K estimation.
-"""
-#=
-function writerow_aconform(stream::IOStream, trial_result::aconf_trial_result )
-  line = join(Any[
-    trial,
-    trial_result.N,
-    trial_result.mu,
-    trial_result.acer_C,
-    2.0*trial_result.mu,
-    trial_result.pcounts
-  ], ",")
-  write(stream, line, "\n")
-end
-=#
-
-@doc """ function run_trial_neutral( N::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )  
-Run a simple neutral population evolution, computes the poweRlaw parameters, and displays the plot.
-n = sample size
-N = popsize
-"""
-#=
-function run_trial_neutral( n::Int64,  N::Int64, mu::Float64, ngens::Int64; burn_in::Float64=2.0 )  
-  if n < N
-    p_counts64 = pop_counts64(sample_population(neutral_poplist(N, mu, ngens, burn_in=burn_in )[ngens],n))
-  else
-    p_counts64 = pop_counts64(neutral_poplist(N, mu, ngens, burn_in=burn_in )[ngens])
-  end
-  #neutral_trial_result(N, mu, p_counts64 )
-  power_law_estimates( p_counts64 )
-end
-=#
-@doc """ function run_trials_simple( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64, burn_in::Float64 )  
-Run a simple neutral population evolution combined over ngen generations, 
-   then computes the poweRlaw parameters, and displays the plot.
-n = sample size
-N = popsize
-N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
-"""
-function run_trials_simple( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=2.0,
-    callR::Bool=true, filename::String="" )  
-  if n < N
-    p_counts64 = pop_counts64(sample_population(simple_poplist(N, N_mu, ngens, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(simple_poplist(N, N_mu, ngens, burn_in=burn_in ))
-  end
-  filename = "$(date_string)simplex$(N):$(N_mu):$(ngens).png"
-  if callR
-    power_law_estimates( p_counts64, filename )
-  else
-    neutral_trial_result(N, N_mu, p_counts64 )
-  end
-end
-
-@doc """ function run_trials_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=2.0, 
-    callR::Bool=true )  
-Run a neutral neutral population evolution combined over ngen generations, 
-   then computes the poweRlaw parameters, and displays the plot.
-n = sample size
-N = popsize
-N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
-"""
-function run_trials_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=2.0, 
-    callR::Bool=true )  
-  if n < N
-    p_counts64 = pop_counts64(sample_population(neutral_poplist(N, N_mu, ngens, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(neutral_poplist(N, N_mu, ngens, burn_in=burn_in ))
-  end
-  filename = "$(date_string)neutral_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens).png"
-  if callR
-    power_law_estimates( p_counts64, filename )
-  else
-    neutral_trial_result(N, N_mu, p_counts64 )
-  end
-end
-
-@doc """ function run_trials_pconform( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, cpower::Float64; 
-    burn_in::Float64=2.0, callR::Bool=true )
-n = sample size
-N = popsize
-N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
-Run a power conformist population evolution.
-"""
-function run_trials_pconform( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, cpower::Float64; 
-    burn_in::Float64=2.0, callR::Bool=true )
-  if n < N
-    p_counts64 = pop_counts64(sample_population(power_conformist_poplist(N, N_mu, ngens, 
-      conformist_power=cpower, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(power_conformist_poplist(N, N_mu, ngens, conformist_power=cpower, 
-      burn_in=burn_in ))
-  end
-  filename = "$(date_string)pconf_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(cpower).png"
-  if callR
-    power_law_estimates( p_counts64, filename )
-  else
-    pconf_trial_result(N, N_mu, cpower, p_counts64 )
-  end
-end
-
-@doc """ function run_trials_acerbi_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=1,
-    burn_in::Float64=2.0, callR::Bool=true )
-n = sample size
-N = popsize
-N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
-Run an acerbi conformist population evolution.
-"""
-function run_trials_acerbi_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=1,
-    burn_in::Float64=2.0, callR::Bool=true )
-  if n < N
-    p_counts64 = pop_counts64(sample_population(acerbi_conformist_poplist(N, N_mu, ngens, C, 
-      toplist_size=toplist_size, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(acerbi_conformist_poplist(N, N_mu, ngens, C, toplist_size=toplist_size, 
-      burn_in=burn_in ))
-  end
-  filename = "$(date_string)acerbi_pos_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_C:$(C)_tsize:$(toplist_size).png"
-  if callR
-    power_law_estimates( p_counts64, filename )
-  else
-    aconf_trial_result(N, N_mu, toplist_size, C, p_counts64 )
-  end
-end
-
-@doc """ run_trials_acerbi_anti_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=1,
-    burn_in::Float64=2.0, callR::Bool=true )
-n = sample size
-N = popsize
-N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
-Run an acerbi conformist population evolution.
-"""
-function run_trials_acerbi_anti_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=1,
-    burn_in::Float64=2.0, callR::Bool=true )
-  if n < N
-    p_counts64 = pop_counts64(sample_population(acerbi_anti_conformist_poplist(N, N_mu, ngens, C, 
-      toplist_size=toplist_size, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(acerbi_anti_conformist_poplist(N, N_mu, ngens, C, toplist_size=toplist_size, 
-      burn_in=burn_in ))
-  end
-  filename = "$(date_string)acerbi_neg_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_C:$(C)_tsize:$(toplist_size).png"
-  if callR
-    power_law_estimates( p_counts64, filename )
-  else
-    aconf_trial_result(N, N_mu, toplist_size, C, p_counts64 )
-  end
-end
-
-@doc """ run_trials_bottomlist_anti_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, C::Float64; bottom_size::Int64=1,
-    burn_in::Float64=2.0, callR::Bool=true )
-n = sample size
-N = popsize
-N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
-Run an acerbi conformist population evolution.
-"""
-function run_trials_bottomlist_anti_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, C::Float64; bottomlist_size::Int64=1,
-    burn_in::Float64=2.0, callR::Bool=true )
-  if n < N
-    p_counts64 = pop_counts64(sample_population(bottomlist_anti_conformist_poplist(N, N_mu, ngens, C, 
-      bottomlist_size=bottomlist_size, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(bottomlist_anti_conformist_poplist(N, N_mu, ngens, C, bottomlist_size=bottomlist_size, 
-      burn_in=burn_in ))
-  end
-  filename = "$(date_string)bottomlist_neg_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_C:$(C)_tsize:$(bottomlist_size).png"
-  if callR
-    power_law_estimates( p_counts64, filename )
-  else
-    aconf_trial_result(N, N_mu, bottomlist_size, C, p_counts64 )
-  end
-end
-
 @doc """ function run_trials_acerbi_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, 
     conformist_prob::Float64, anti_conformist_prob::Float64; toplist_size::Int64=1,
     burn_in::Float64=2.0, callR::Bool=true )
@@ -365,29 +174,47 @@ function run_trials_power_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, n
 end
 
 @doc """ 
-Run a simple neutral population evolution combined over ngen generations, 
+Run a non-neutral population evolution combined over ngen generations, 
    then computes the poweRlaw parameters, and displays the plot.
 n = sample size
 N = popsize
 N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
+dfe = ditribution of fitness effect function, 
+      one of dfe_advantageous, dfe_deleterious, dfe_mixed, dfe_mod
 """
 function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64, dfe::Function; 
-    burn_in::Float64=2.0, CSVflag::Bool=true )  
-  if n < N
-    p_counts64 = pop_counts64(sample_population(nearly_neutral_poplist(N, N_mu, ngens, dfe, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(nearly_neutral_poplist(N, N_mu, ngens, dfe, burn_in=burn_in ))
-  end
+    burn_in::Float64=2.0, CSVflag::Bool=true, PNGflag::Bool=true, dfe_mod_fit_inc::Float64=1.0, dfe_mod_modulus::Int64=5 )  
   if dfe == dfe_advantageous
     dfe_str = "adv"
-  elseif dfe == dfe_disadvantageous
+    dfe_funct = dfe_advantageous
+  elseif dfe == dfe_deleterious
     dfe_str = "disadv"
+    dfe_funct = dfe_deleterious
   elseif dfe == dfe_mixed
     dfe_str = "mixed"
+    dfe_funct = dfe_mixed
+  elseif dfe == dfe_mod
+    if dfe_mod_fit_inc != 1.0
+      dfe_str = "mod_fit_inc:$(dfe_mod_fit_inc)modulus:$(dfe_mod_modulus)"
+      dfe_funct = x->dfe(x,fit_inc=dfe_mod_fit_inc,modulus=dfe_mod_modulus)
+    else
+      dfe_str = "mod_neutral"
+      dfe_funct = dfe
+    end
   else
     dfe_str = "dfe_error"
+    dfe_funct = dfe
   end
-  filename = "$(date_string)n_neutral_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_$(dfe_str).png"
+  if n < N
+    p_counts64 = pop_counts64(sample_population(nearly_neutral_poplist(N, N_mu, ngens, dfe_funct, burn_in=burn_in ),n))
+  else
+    p_counts64 = pop_counts64(nearly_neutral_poplist(N, N_mu, ngens, dfe_funct, burn_in=burn_in ))
+  end
+  if PNGflag
+    filename = "$(date_string)n_neutral_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_$(dfe_str).png"
+  else  # display plot instead of writing plot file
+    filename = ""
+  end
   ple = power_law_estimates( p_counts64, filename )
   ntr = nearly_neutral_trial_result(n, N, N_mu, ngens, dfe_str, burn_in, p_counts64 )
   if CSVflag
@@ -407,10 +234,11 @@ bsize=3
 cpwr = 0.5
 acpwr = -0.5
 burn_in = 2.0
-dfe = dfe_advantageous
+dfe = dfe_mod
+fit_inc = 1.1
 run_trials_power_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,conformist_power=cpwr,anti_conformist_power=acpwr,burn_in=burn_in,CSVflag=true)
 run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,toplist_size=tsize,bottomlist_size=bsize,bottom=false,burn_in=burn_in,CSVflag=true)
 run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,toplist_size=tsize,bottomlist_size=bsize,bottom=true,burn_in=burn_in,CSVflag=true)
-run_trials_nearly_neutral(n,N,N_mu,ngens,dfe)
+run_trials_nearly_neutral(n,N,N_mu,ngens,dfe,dfe_mod_fit_inc=1.1)
 =#
 

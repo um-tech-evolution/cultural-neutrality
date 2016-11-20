@@ -31,13 +31,13 @@ function propsel( pop::Population, fitness::Vector{Float64}  )
   new_pop
 end
 
-@doc """ function propsel( pop::Population, fitness::Function, nn_select::Int64 )
+@doc """ function propsel( pop::Population, fitness::Function )
 Apply proportional selection to Population pop using fitness, 
 and return the result.  
 """
-function propsel( pop::Population, fitness::Function, dfe::Function, nn_select::Int64 )
+function propsel( pop::Population, fitness::Function, dfe::Function )
   new_pop = deepcopy(pop)
-  propsel!( new_pop, fitness, dfe, nn_select )
+  propsel!( new_pop, fitness, dfe )
   new_pop
 end
 
@@ -56,7 +56,7 @@ function propsel!( pop::Population, fitness::Vector{Float64}  )
   k = 0
   while k < n
     i = rand(1:n)
-    w = fitness[i] / fmax
+    w = fitness[pop[i]] / fmax
     if rand() < w
       selected[k + 1] = i
       k += 1
@@ -68,10 +68,10 @@ end
 @doc """function propsel!(p::Population, fitness::Function, dfe::Function )
 Conduct proportional selection in-place.
 """
-function propsel!( pop::Population, fitness::Function, dfe::Function, nn_select::Int64 )
+function propsel!( pop::Population, fitness::Function, dfe::Function )
   fmax = 0.0
   for p in pop
-    fitp = fitness( p, dfe, nn_select )
+    fitp = fitness( p, dfe )
     if fitp > fmax
       fmax = fitp
     end
@@ -86,7 +86,7 @@ function propsel!( pop::Population, fitness::Function, dfe::Function, nn_select:
   k = 0
   while k < n
     i = rand(1:n)
-    w = fitness(i,dfe,nn_select) / fmax
+    w = fitness(pop[i],dfe) / fmax
     if rand() < w
       selected[k + 1] = i
       k += 1

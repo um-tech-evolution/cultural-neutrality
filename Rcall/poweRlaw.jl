@@ -25,8 +25,16 @@ function power_law_estimates(data_vector, filename::String="" )
     R"
         plot(m_pl)
         lines(m_pl,col=2)
-        dev.off()
     "
+    if length(filename) > 0 && filename[end-3:end] == ".png"
+      R" 
+        dev.off()
+      "
+    else
+      R"
+        Sys.sleep(60)
+      "
+    end
     #alpha_vals = rcopy(R"est_scan")
     vals = Dict(
                 "xmin" => est_pc[:xmin],
