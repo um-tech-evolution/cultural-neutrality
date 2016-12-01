@@ -5,8 +5,10 @@ Current objective (as of 10/25/16) is to produce a data frame and corresponding 
 that can be read into the poweRlaw R package.  So I am deleting the Slatkin and Watterson tests.
 =#
 
-date_string = "../data/11_18_16/"   # make sure that  /home/evotech/cultural_neutrality/data/11_18_16 exists"
-println("data string: ",date_string)
+current_dir = pwd()
+data_string = "../data/"*Dates.format(now(),"mm_dd_yy")*"/"
+try mkdir(data_string) catch end   # create today's directory with no error if it already exists
+println("data string: ",data_string)
 
 
 @doc """ type trial_result
@@ -54,6 +56,18 @@ function pmixed_trial_result(n::Int64,N::Int64,N_mu::Float64, ngens::Int64, conf
       0, 0, false, "dfe_none", burn_in, pcounts )
 end
 
+@doc """ function pmixed_trial_result(n::Int64,N::Int64,N_mu::Float64, ngens::Int64, conformist_prob::Float64,
+    anti_conformist_prob::Float64, conformist_power::Float64, anti_conformist_power::Float64,
+    burn_in::Float64, pcounts::Vector{Int64} )
+Construct a trial_result corresponding to power mixed
+"""
+function nn_pmixed_trial_result(n::Int64,N::Int64,N_mu::Float64, ngens::Int64, conformist_prob::Float64,
+    anti_conformist_prob::Float64, conformist_power::Float64, anti_conformist_power::Float64, dfe_str::AbstractString,
+    burn_in::Float64, pcounts::Vector{Int64} )
+  trial_result( n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, conformist_power, anti_conformist_power, 
+      0, 0, false, dfe_str, burn_in, pcounts )
+end
+
 function nearly_neutral_trial_result(n::Int64,N::Int64,N_mu::Float64, ngens::Int64, dfe_str::AbstractString,
     burn_in::Float64, pcounts::Vector{Int64} )
   trial_result( n, N, N_mu, ngens, 0.0, 0.0, 0.0, 0.0, 0, 0, false, dfe_str, burn_in, pcounts )
@@ -79,7 +93,7 @@ function writeheader(stream::IOStream, t_result::trial_result)
     "# burn_in=$(t_result.burn_in)",
   ], "\n"), "\n")
   line = join([
-    "pop_counts"
+    "# pop_counts"
   ], ",")
   write(stream, line, "\n")
 end
@@ -118,17 +132,19 @@ function run_trials_acerbi_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, 
       conformist_prob, anti_conformist_prob, toplist_size=toplist_size, bottomlist_size=bottomlist_size, bottom=bottom, burn_in=burn_in ))
   end
   if bottom
-    filename = "$(date_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
+    filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
   else
-    filename = "$(date_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
+    filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
   end
   println("filename: ",filename)
   if bottom
-    filename = "$(date_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+    filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+    ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Acerbi Mixed Conformist", subtitle="tsize=$(toplist_size) bsize=$(bottomlist_size) cprob=$(conformist_prob) acprob=$(anti_conformist_prob)")
   else
-    filename = "$(date_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+    filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+    ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Acerbi Mixed Conformist", subtitle="bottom=false tsize=$(toplist_size) cprob=$(conformist_prob) acprob=$(anti_conformist_prob)")
   end
-  ple = power_law_estimates( p_counts64, filename )
+  #ple = power_law_estimates( p_counts64, filename )
   atr = amixed_trial_result(n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, 
       toplist_size, bottomlist_size, bottom, burn_in, p_counts64 )
   if CSVflag
@@ -145,7 +161,7 @@ end
 n = sample size
 N = popsize
 N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
-Run an acerbi mixed conformist population evolution.
+Run an power mixed conformist population evolution.
 """
 function run_trials_power_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, 
     conformist_prob::Float64, anti_conformist_prob::Float64; 
@@ -162,10 +178,64 @@ function run_trials_power_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, n
       conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
       burn_in=burn_in ))
   end
-  filename = "$(date_string)power_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
-  ple = power_law_estimates( p_counts64, filename )
+  filename = "$(data_string)power_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+  ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Power Mixed Conformist", subtitle="cpower=$(conformist_power) cprob=$(conformist_prob) acpower=$(anti_conformist_power) acprob=$(anti_conformist_prob)")
   ptr = pmixed_trial_result(n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, 
       conformist_power, anti_conformist_power, burn_in, p_counts64 )
+  if CSVflag
+    fname = filename[1:(end-4)]*".csv"
+    write_pcounts( fname, ptr )
+  end
+  ple
+end
+
+function run_trials_nearly_neutral_power_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, 
+    conformist_prob::Float64, anti_conformist_prob::Float64; dfe::Function=dfe_neutral,
+    conformist_power::Float64=0.0, anti_conformist_power=0.0,
+    burn_in::Float64=2.0, CSVflag::Bool=true, dfe_mod_fit_inc::Float64=1.0, dfe_mod_modulus::Int64=5,
+    alpha::Float64=0.2, theta::Float64=0.5, adv_probability::Float64=0.2, alpha_disadv::Float64=0.2,
+    alpha_adv::Float64=1.0, theta_disadv::Float64=1.0, theta_adv::Float64=0.01 )  
+  if dfe == dfe_advantageous
+    dfe_str = "adv_alpha:$(alpha)_theta:$(theta)"
+    dfe_funct = x->dfe_advantageous(x,alpha=alpha,theta=theta)
+  elseif dfe == dfe_deleterious
+    dfe_str = "disadv_alpha:$(alpha)_theta:$(theta)"
+    dfe_funct = x->dfe_deleterious(x,alpha=alpha,theta=theta)
+  elseif dfe == dfe_mixed
+    dfe_str = "mixed_adv_probability:$(adv_probability)_alpha_disdv:$(alpha_disadv)_alpha_adv:$(alpha_adv)_theta_disadv:$(theta_disadv)_theta_adv:$(theta_adv)"
+    dfe_funct = x->dfe_mixed(x,adv_probability=adv_probability,alpha_disadv=alpha_disadv,
+        alpha_adv=alpha_adv,theta_disadv=theta_disadv,theta_adv=theta_adv )
+  elseif dfe == dfe_mod
+    if dfe_mod_fit_inc != 1.0
+      dfe_str = "mod_fit_inc:$(dfe_mod_fit_inc)modulus:$(dfe_mod_modulus)"
+      dfe_funct = x->dfe(x,fit_inc=dfe_mod_fit_inc,modulus=dfe_mod_modulus)
+    else
+      dfe_str = "dfe_neutral"
+      dfe_funct = dfe_neutral
+    end
+  elseif  dfe == dfe_neutral
+    dfe_str = "dfe_neutral"
+    dfe_funct = dfe_neutral
+  else
+    error("illegal dfe function in run_trials_nearly_neutral_power_mixed_conformist")
+  end
+  if n < N
+    p_counts64 = pop_counts64(sample_population(nearly_neutral_power_mixed_conformist_poplist(N, N_mu, ngens, 
+      conformist_prob, anti_conformist_prob, dfe=dfe_funct,
+      conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
+      burn_in=burn_in ),n))
+  else
+    p_counts64 = pop_counts64(nearly_neutral_power_mixed_conformist_poplist(N, N_mu, ngens, 
+      conformist_prob, anti_conformist_prob, dfe=dfe_funct, 
+      conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
+      burn_in=burn_in ))
+  end
+  filename = "$(data_string)nn_power_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob)_dfe:$(dfe_str).png"
+  println("filename: ",filename)
+  ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Nearly Neutral Power Mixed", subtitle="cpower=$(conformist_power) cprob=$(conformist_prob) acpower=$(anti_conformist_power) acprob=$(anti_conformist_prob)", top_str=dfe_str )
+  #ple = power_law_estimates( p_counts64, filename )
+  ptr = nn_pmixed_trial_result(n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, 
+      conformist_power, anti_conformist_power, dfe_str, burn_in, p_counts64 )
   if CSVflag
     fname = filename[1:(end-4)]*".csv"
     write_pcounts( fname, ptr )
@@ -182,28 +252,34 @@ N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
 dfe = ditribution of fitness effect function, 
       one of dfe_advantageous, dfe_deleterious, dfe_mixed, dfe_mod
 """
-function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64, dfe::Function; 
-    burn_in::Float64=2.0, CSVflag::Bool=true, PNGflag::Bool=true, dfe_mod_fit_inc::Float64=1.0, dfe_mod_modulus::Int64=5 )  
+function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64; dfe::Function=dfe_neutral, 
+    burn_in::Float64=2.0, CSVflag::Bool=true, PNGflag::Bool=true, 
+dfe_mod_fit_inc::Float64=1.0, dfe_mod_modulus::Int64=5,
+    alpha::Float64=0.2, theta::Float64=0.5, adv_probability::Float64=0.2, alpha_disadv::Float64=0.2,
+    alpha_adv::Float64=1.0, theta_disadv::Float64=1.0, theta_adv::Float64=0.01 )  
   if dfe == dfe_advantageous
-    dfe_str = "adv"
-    dfe_funct = dfe_advantageous
+    dfe_str = "adv_alpha:$(alpha)_theta:$(theta)"
+    dfe_funct = x->dfe_advantageous(x,alpha=alpha,theta=theta)
   elseif dfe == dfe_deleterious
-    dfe_str = "disadv"
-    dfe_funct = dfe_deleterious
+    dfe_str = "disadv_alpha:$(alpha)_theta:$(theta)"
+    dfe_funct = x->dfe_deleterious(x,alpha=alpha,theta=theta)
   elseif dfe == dfe_mixed
-    dfe_str = "mixed"
-    dfe_funct = dfe_mixed
+    dfe_str = "mixed_adv_probability:$(adv_probability)_alpha_disdv:$(alpha_disadv)_alpha_adv:$(alpha_adv)_theta_disadv:$(theta_disadv)_theta_adv:$(theta_adv)"
+    dfe_funct = x->dfe_mixed(x,adv_probability=adv_probability,alpha_disadv=alpha_disadv,
+        alpha_adv=alpha_adv,theta_disadv=theta_disadv,theta_adv=theta_adv )
   elseif dfe == dfe_mod
     if dfe_mod_fit_inc != 1.0
       dfe_str = "mod_fit_inc:$(dfe_mod_fit_inc)modulus:$(dfe_mod_modulus)"
       dfe_funct = x->dfe(x,fit_inc=dfe_mod_fit_inc,modulus=dfe_mod_modulus)
     else
-      dfe_str = "mod_neutral"
-      dfe_funct = dfe
+      dfe_str = "dfe_neutral"
+      dfe_funct = dfe_neutral
     end
+  elseif  dfe == dfe_neutral
+    dfe_str = "dfe_neutral"
+    dfe_funct = dfe_neutral
   else
-    dfe_str = "dfe_error"
-    dfe_funct = dfe
+    error("illegal dfe function in run_trials_nearly_neutral")
   end
   if n < N
     p_counts64 = pop_counts64(sample_population(nearly_neutral_poplist(N, N_mu, ngens, dfe_funct, burn_in=burn_in ),n))
@@ -211,11 +287,12 @@ function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::I
     p_counts64 = pop_counts64(nearly_neutral_poplist(N, N_mu, ngens, dfe_funct, burn_in=burn_in ))
   end
   if PNGflag
-    filename = "$(date_string)n_neutral_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_$(dfe_str).png"
+    filename = "$(data_string)n_neutral_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_$(dfe_str).png"
   else  # display plot instead of writing plot file
     filename = ""
   end
-  ple = power_law_estimates( p_counts64, filename )
+  ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Nearly Neutral", subtitle=dfe_str )
+  #ple = power_law_estimates( p_counts64, filename )
   ntr = nearly_neutral_trial_result(n, N, N_mu, ngens, dfe_str, burn_in, p_counts64 )
   if CSVflag
     fname = filename[1:(end-4)]*".csv"
@@ -223,22 +300,25 @@ function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::I
   end
   ple
 end
-#= Set parameters for trial runs
-n = N = 250
-N_mu = 2.0
-ngens = 1000
-cprob=0.2
-acprob=0.2
-tsize=3
-bsize=3
-cpwr = 0.5
-acpwr = -0.5
-burn_in = 2.0
-dfe = dfe_mod
-fit_inc = 1.1
+
+# Set parameters for trial runs
+n = N = 250; N_mu = 2.0; ngens = 1000; burn_in = 2.0;
+cprob=0.2; acprob=0.2;
+cpwr = 0.5; acpwr = -0.5;
+#=
 run_trials_power_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,conformist_power=cpwr,anti_conformist_power=acpwr,burn_in=burn_in,CSVflag=true)
+tsize=3; bsize=1;
 run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,toplist_size=tsize,bottomlist_size=bsize,bottom=false,burn_in=burn_in,CSVflag=true)
 run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,toplist_size=tsize,bottomlist_size=bsize,bottom=true,burn_in=burn_in,CSVflag=true)
-run_trials_nearly_neutral(n,N,N_mu,ngens,dfe,dfe_mod_fit_inc=1.1)
 =#
-
+fit_inc = 1.2;
+#=
+run_trials_nearly_neutral(n,N,N_mu,ngens,dfe=dfe_mod,dfe_mod_fit_inc=1.1)
+dfe = dfe_advantageous
+run_trials_nearly_neutral(n,N,N_mu,ngens,dfe=dfe)
+run_trials_nearly_neutral_power_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,conformist_power=cpwr,anti_conformist_power=acpwr,burn_in=burn_in,CSVflag=true,dfe=dfe,alpha=1.0,theta=0.01)
+dfe = dfe_deleterious
+run_trials_nearly_neutral(n,N,N_mu,ngens,dfe=dfe)
+dfe = dfe_mixed
+run_trials_nearly_neutral(n,N,N_mu,ngens,dfe=dfe)
+=#

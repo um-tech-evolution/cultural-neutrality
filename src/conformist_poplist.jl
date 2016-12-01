@@ -2,7 +2,8 @@ using DataStructures
 # TODO:  put these type aliases in a separate file
 
 export topKlist, bottomKlist, topKset, bottomKset, turnover, power_conformist_poplist, acerbi_conformist_poplist, 
-    acerbi_anti_conformist_poplist, acerbi_mixed_conformist_poplist, power_mixed_conformist_poplist
+    acerbi_anti_conformist_poplist, acerbi_mixed_conformist_poplist, power_mixed_conformist_poplist, 
+    nearly_neutral_power_mixed_conformist_poplist
 
 
 @doc """ function topKlist( pop::Population, K::Int64 )
@@ -58,7 +59,7 @@ function turnover( pop1::Population, pop2::Population, K::Int64 )
   length(setdiff( toplist1, toplist2 )) + length(setdiff( toplist2, toplist1 ))
 end
 
-
+#=
 @doc """funcction power_conformist_poplist( N::Int64, mu::Float64, ngens::Int64; burn_in::Int64=0, conformist_power::Float64=0.0 )
 
 N:      population size
@@ -274,6 +275,7 @@ function bottomlist_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int
     return poplist[int_burn_in+1:end]
   end
 end
+=#
 
 # TODO:  Check if Kandler's model of conformity agrees with Acerbi's.
 @doc """ function acerbi_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, 
@@ -390,16 +392,18 @@ function power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
     pop_result = Population()
   end
   for g = 2:(ngens+int_burn_in)
-    w_conf = fill(1.0,N)
-    w_anti_conf = fill(1.0,N)
+    #w_conf = fill(1.0,N)
+    #w_anti_conf = fill(1.0,N)
+    fitness_table = Dict{Int64,Float64}()
+    dfe = dfe_neutral
     rp = randperm(N)
     if conformist_prob > 0.0
-      conf_fitness = freq_scaled_fitness( poplist[g-1], w_conf, conformist_power )
-      new_conf_pop = propsel( poplist[g-1], conf_fitness )[rp]
+      conf_fitness_table = freq_scaled_fitness( poplist[g-1], conformist_power, fitness_table )
+      new_conf_pop = propsel( poplist[g-1], dfe, conf_fitness_table )[rp]
     end
     if anti_conformist_prob > 0.0
-      anti_conf_fitness = freq_scaled_fitness( poplist[g-1], w_anti_conf, anti_conformist_power )
-      new_anti_conf_pop = propsel( poplist[g-1], anti_conf_fitness )[rp]
+      anti_conf_fitness_table = freq_scaled_fitness( poplist[g-1], anti_conformist_power, fitness_table )
+      new_anti_conf_pop = propsel( poplist[g-1], dfe, anti_conf_fitness_table )[rp]
     end
     result = zeros(Int64,N)
     for i = 1:N
@@ -414,6 +418,95 @@ function power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
       else     # random copy
         result[i] = poplist[g-1][rand(1:N)]
       end
+    end
+    push!( poplist, result )
+    if combine && g >= int_burn_in+1
+      pop_result = vcat( pop_result, result )
+    end
+  end
+  poplist[int_burn_in+1:end]
+  if combine
+    return pop_result
+  else
+    return poplist[int_burn_in+1:end]
+  end
+end
+
+function nearly_neutral_power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
+    conformist_prob::Float64, anti_conformist_prob::Float64; dfe::Function=dfe_neutral,
+    conformist_power::Float64=0.0, anti_conformist_power::Float64=0.0,
+    burn_in::Float64=2.0, uniform_start::Bool=false, combine::Bool=true )
+  if conformist_power < 0.0
+    error("conformist_power in power_mixed_conformist should be nonnegative.")
+  end
+  if anti_conformist_power > 0.0
+    error("conformist_power in power_mixed_conformist should be nonpostive.")
+  end
+  if conformist_prob + anti_conformist_prob > 1.0
+    error("conformist_prob + anti_conformist_prob must be less than 1.0 in power_mixed_conformist.")
+  end
+  int_burn_in = Int(round(N*burn_in))
+  mu = N_mu/N
+  fitness_table = Dict{Int64,Float64}()  # Fitness table contains the dfe fitness of each id.
+  if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
+    poplist= Population[ Int64[1 for i = 1:N] ]
+    dfe_fitness(1, dfe, fitness_table )  # set fitness of i to be dfe(i).
+    new_id = 2
+  else
+    poplist= Population[ collect(1:N) ]
+    for i = 1:N
+      # Note that dfe_advantageous(i), dfe_deleterious(i), dfe_mixed(i) do not depend on i, but dfe_mod(i) does depend on i
+      dfefit=dfe_fitness(i, dfe, fitness_table )  # set fitness of i to be dfe(i).
+    end
+    new_id = N+1
+  end
+  if combine
+    pop_result = Population()
+  end
+  for g = 2:(ngens+int_burn_in)
+    rp = randperm(N)
+    if conformist_prob > 0.0
+      conf_fitness_table = freq_scaled_fitness( poplist[g-1], conformist_power, fitness_table )
+      new_conf_pop = propsel( poplist[g-1], dfe, conf_fitness_table )[rp]
+    end
+    if anti_conformist_prob > 0.0
+      anti_conf_fitness_table = freq_scaled_fitness( poplist[g-1], anti_conformist_power, fitness_table )
+      new_anti_conf_pop = propsel( poplist[g-1], dfe, anti_conf_fitness_table )[rp]
+    end
+    result = zeros(Int64,N)
+    mutate_count = 0
+    conf_count = 0
+    anti_conf_count = 0
+    random_count = 0
+    for i = 1:N
+      rnd = rand()
+      if rnd < mu  # mutate
+        mutate_count += 1
+      elseif rnd < mu+conformist_prob  # conformist copy (without replacement)
+        conf_count += 1
+      elseif rnd < mu+conformist_prob+anti_conformist_prob
+        anti_conf_count += 1
+      else     # random copy
+        random_count += 1
+        result[i] = poplist[g-1][rand(1:N)]
+      end
+    end
+    for i = 1:mutate_count
+      result[i] = new_id
+      dfe_fitness( new_id, dfe, fitness_table )  # Set fitness of new_id
+      #println("new_id: ",new_id," fit: ",fitness_table[new_id] )
+      new_id += 1
+    end
+    if conf_count > 0
+      conf_fitness_table = freq_scaled_fitness( poplist[g-1], conformist_power, fitness_table )
+      result[mutate_count+1:mutate_count+conf_count] = propsel( poplist[g-1], conf_count, dfe, conf_fitness_table )
+    end
+    if anti_conf_count > 0
+      anti_conf_fitness_table = freq_scaled_fitness( poplist[g-1], anti_conformist_power, fitness_table )
+      result[mutate_count+conf_count+1:mutate_count+conf_count+anti_conf_count] = propsel( poplist[g-1], anti_conf_count, dfe, anti_conf_fitness_table )
+    end
+    if random_count > 0
+      result[mutate_count+conf_count+anti_conf_count+1:end] = propsel( poplist[g-1], random_count, dfe, fitness_table )
     end
     push!( poplist, result )
     if combine && g >= int_burn_in+1
