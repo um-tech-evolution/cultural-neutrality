@@ -252,11 +252,13 @@ N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
 dfe = ditribution of fitness effect function, 
       one of dfe_advantageous, dfe_deleterious, dfe_mixed, dfe_mod
 """
-function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64; dfe::Function=dfe_neutral, 
+function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::Int64; 
+    dfe::Function=dfe_neutral, 
     burn_in::Float64=2.0, CSVflag::Bool=true, PNGflag::Bool=true, 
-dfe_mod_fit_inc::Float64=1.0, dfe_mod_modulus::Int64=5,
+    dfe_mod_fit_inc::Float64=1.0, dfe_mod_modulus::Int64=5,
     alpha::Float64=0.2, theta::Float64=0.5, adv_probability::Float64=0.2, alpha_disadv::Float64=0.2,
-    alpha_adv::Float64=1.0, theta_disadv::Float64=1.0, theta_adv::Float64=0.01 )  
+    alpha_adv::Float64=1.0, theta_disadv::Float64=1.0, theta_adv::Float64=0.01,
+    bootstrap::Bool=false, nsims::Int64=5000, nthreads::Int64=8 )
   if dfe == dfe_advantageous
     dfe_str = "adv_alpha:$(alpha)_theta:$(theta)"
     dfe_funct = x->dfe_advantageous(x,alpha=alpha,theta=theta)
@@ -291,8 +293,11 @@ dfe_mod_fit_inc::Float64=1.0, dfe_mod_modulus::Int64=5,
   else  # display plot instead of writing plot file
     filename = ""
   end
-  ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Nearly Neutral", subtitle=dfe_str )
-  #ple = power_law_estimates( p_counts64, filename )
+  if bootstrap
+    ple = power_law_bootstrap( p_counts64, nthreads=nthreads, nsims=nsims )
+  else
+    ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Nearly Neutral", subtitle=dfe_str )
+  end
   ntr = nearly_neutral_trial_result(n, N, N_mu, ngens, dfe_str, burn_in, p_counts64 )
   if CSVflag
     fname = filename[1:(end-4)]*".csv"
