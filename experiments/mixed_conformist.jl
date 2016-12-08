@@ -122,31 +122,38 @@ N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
 Run an acerbi mixed conformist population evolution.
 """
 function run_trials_acerbi_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, ngens::Int64, 
-    conformist_prob::Float64, anti_conformist_prob::Float64; toplist_size::Int64=1, bottomlist_size::Int64=1,
-    bottom::Bool=true, burn_in::Float64=2.0, CSVflag::Bool=true  )
+    conformist_prob::Float64, anti_conformist_prob::Float64; acerbi_flag::Bool=true, 
+    toplist_size::Int64=1, bottomlist_size::Int64=1, acerbi_bottomlist::Bool=true,
+    burn_in::Float64=2.0, CSVflag::Bool=true  )
   if n < N
-    p_counts64 = pop_counts64(sample_population(acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
-      conformist_prob, anti_conformist_prob, toplist_size=toplist_size, bottomlist_size=bottomlist_size, bottom=bottom, burn_in=burn_in ),n))
+    p_counts64 = pop_counts64(sample_population( acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
+      conformist_prob, anti_conformist_prob, acerbi_flag=acerbi_flag, toplist_size=toplist_size, 
+      bottomlist_size=bottomlist_size, acerbi_bottomlist=acerbi_bottomlist, burn_in=burn_in ),n))
   else
-    p_counts64 = pop_counts64(acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
-      conformist_prob, anti_conformist_prob, toplist_size=toplist_size, bottomlist_size=bottomlist_size, bottom=bottom, burn_in=burn_in ))
+    p_counts64 = pop_counts64( acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
+      conformist_prob, anti_conformist_prob, acerbi_flag=acerbi_flag, toplist_size=toplist_size, 
+      bottomlist_size=bottomlist_size, acerbi_bottomlist=acerbi_bottomlist, burn_in=burn_in ))
   end
-  if bottom
+  if acerbi_bottomlist
     filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
   else
     filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
   end
   println("filename: ",filename)
-  if bottom
-    filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
-    ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Acerbi Mixed Conformist", subtitle="tsize=$(toplist_size) bsize=$(bottomlist_size) cprob=$(conformist_prob) acprob=$(anti_conformist_prob)")
-  else
-    filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
-    ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Acerbi Mixed Conformist", subtitle="bottom=false tsize=$(toplist_size) cprob=$(conformist_prob) acprob=$(anti_conformist_prob)")
+  if acerbi_flag  # Acerbi conformist definition rather than Mesoudi
+    if acerbi_bottomlist
+      filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+      ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Acerbi Mixed Conformist", subtitle="tsize=$(toplist_size) bsize=$(bottomlist_size) cprob=$(conformist_prob) acprob=$(anti_conformist_prob)")
+    else
+      filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+      ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Acerbi Mixed Conformist", subtitle="bottom=false tsize=$(toplist_size) cprob=$(conformist_prob) acprob=$(anti_conformist_prob)")
+    end
+  else  # not acerbi_flag:   Mesoudi conformist definition rather than Acerbi conformist definition
+    filename = "$(data_string)mesoudi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
+    ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Mesoudi Mixed Conformist", subtitle="tsize=$(toplist_size) bsize=$(bottomlist_size) cprob=$(conformist_prob) acprob=$(anti_conformist_prob)")
   end
-  #ple = power_law_estimates( p_counts64, filename )
   atr = amixed_trial_result(n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, 
-      toplist_size, bottomlist_size, bottom, burn_in, p_counts64 )
+      toplist_size, bottomlist_size, acerbi_bottomlist, burn_in, p_counts64 )
   if CSVflag
     fname = filename[1:(end-4)]*".csv"
     write_pcounts( fname, atr )
@@ -310,11 +317,13 @@ end
 n = N = 250; N_mu = 2.0; ngens = 1000; burn_in = 2.0;
 cprob=0.2; acprob=0.2;
 cpwr = 0.5; acpwr = -0.5;
+tsize=3; bsize=1;
 #=
 run_trials_power_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,conformist_power=cpwr,anti_conformist_power=acpwr,burn_in=burn_in,CSVflag=true)
-tsize=3; bsize=1;
-run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,toplist_size=tsize,bottomlist_size=bsize,bottom=false,burn_in=burn_in,CSVflag=true)
-run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,toplist_size=tsize,bottomlist_size=bsize,bottom=true,burn_in=burn_in,CSVflag=true)
+run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,acerbi_flag=true,toplist_size=tsize,bottomlist_size=bsize,acerbi_bottomlist=false,burn_in=burn_in,CSVflag=true)
+run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,acerbi_flag=true,toplist_size=tsize,bottomlist_size=bsize,acerbi_bottomlist=true,burn_in=burn_in,CSVflag=true)
+run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,acerbi_flag=false,toplist_size=tsize,bottomlist_size=bsize,burn_in=burn_in,CSVflag=true)
+run_trials_acerbi_mixed_conformist(n,N,N_mu,ngens,cprob,acprob,acerbi_flag=false,toplist_size=tsize,bottomlist_size=bsize,burn_in=burn_in,CSVflag=true)
 =#
 fit_inc = 1.2;
 #=

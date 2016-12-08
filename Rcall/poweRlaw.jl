@@ -69,4 +69,3 @@ function test_driver()
     #answer = power_law_estimates(bndf[:GBirths],[262,280,300,320])
     #answer = power_law_estimates([1,2,3,4,5],[1,2,3])
 end
-

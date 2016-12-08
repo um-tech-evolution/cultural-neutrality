@@ -8,26 +8,38 @@ export topKlist, bottomKlist, topKset, bottomKset, turnover, power_conformist_po
 
 @doc """ function topKlist( pop::Population, K::Int64 )
 Return the list of the K most frequent elements of pop.
+If there are more than K of these, return the list of all of them.
 """ 
 function topKlist( pop::Population, K::Int64 )
   c = counter(Int64)
   for x in pop
     push!(c,x)
   end
-  result = sort( unique(pop), by=x->c[x], rev=true )
-  result[1:min(K,length(result))]
+  result = sort( pop, by=x->c[x], rev=true )
+  j = K
+  max = c[result[K]]
+  while c[result[j]] == max && j < length(result)
+    j += 1
+  end
+  result[1:j-1]
 end
 
 @doc """ function bottomKlist( pop::Population, K::Int64 )
 Return the list of the K least frequent elements of pop.
+If there are more than K of these, return the list of all of them.
 """ 
 function bottomKlist( pop::Population, K::Int64 )
   c = counter(Int64)
   for x in pop
     push!(c,x)
   end
-  result = sort( unique(pop), by=x->c[x] )
-  result[1:min(K,length(result))]
+  result = sort( pop, by=x->c[x] )
+  j = K
+  min = c[result[K]]
+  while c[result[j]] == min && j < length(result)
+    j += 1
+  end
+  result[1:j-1]
 end
 
 @doc """ function Kset( pop::Population, K::Int64 )
@@ -232,7 +244,6 @@ C   is the probability of a random copy
 toplist_size   is the size of the toplist to use (Acerbi uses 10 for this value).
 TODO: Implement what might be called bottomlist anticonformism----which is different from Acerbi anti-conformism.
 """
-
 function bottomlist_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, C::Float64; bottomlist_size::Int64=1, burn_in::Float64=1.0,
     uniform_start::Bool=false, combine::Bool=true )
   int_burn_in = Int(round(N*burn_in))
@@ -277,74 +288,120 @@ function bottomlist_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int
 end
 =#
 
+@doc """ function new_toplist_population( poplist::PopList, g::Int64, new_id::Vector{Int64},  N::Int64, mu::Float64,
+      conformist_prob::Float64, anti_conformist_prob::Float64, toplist_size::Int64, bottomlist_size::Int64, bottom::Bool )
+Generates a new population using the "choose from toplist" and "choose from bottomlist" methods 
+    for conformity and anti-conformity.  These are used by Mesoudi-Lycett.
+"""
+
+function new_toplist_population( poplist::PopList, g::Int64, new_id::Vector{Int64},  N::Int64, mu::Float64,
+      conformist_prob::Float64, anti_conformist_prob::Float64, toplist_size::Int64, bottomlist_size::Int64, bottom::Bool )
+  toplist = topKlist( poplist[g-1], toplist_size )
+  bottomlist = bottomKlist( poplist[g-1], bottomlist_size )
+  result = zeros(Int64,N)
+  for i = 1:N
+    rnd = rand()
+    if rnd < mu  # mutate
+      result[i] = new_id[1]
+      new_id[1] += 1
+    elseif rnd < mu+conformist_prob  # conformist copy
+      result[i] = toplist[rand(1:length(toplist))]
+    elseif rnd < mu+conformist_prob+anti_conformist_prob  # anti-conformist copy
+      result[i] = bottomlist[rand(1:length(toplist))]
+    else  # random copy
+      result[i] = poplist[g-1][rand(1:N)]
+    end
+  end
+  return result
+end
+
+@doc """ function new_acerbi_population( poplist::PopList, g::Int64, new_id::Vector{Int64},  N::Int64, mu::Float64, 
+      conformist_prob::Float64, anti_conformist_prob::Float64, toplist_size::Int64, bottomlist_size::Int64, 
+      acerbi_bottomlist::Bool )
+Generates a new population using the Acerbi method of conformity and anti-conformity.
+"""
+function new_acerbi_population( poplist::PopList, g::Int64, new_id::Vector{Int64},  N::Int64, mu::Float64, 
+      conformist_prob::Float64, anti_conformist_prob::Float64, toplist_size::Int64, bottomlist_size::Int64, 
+      acerbi_bottomlist::Bool )
+  toplist = topKlist( poplist[g-1], toplist_size )
+  if acerbi_bottomlist
+    bottomlist = bottomKlist( poplist[g-1], bottomlist_size )
+  end
+  result = zeros(Int64,N)
+  for i = 1:N
+    rnd = rand()
+    if rnd < mu  # mutate
+      result[i] = new_id[1]
+      new_id[1] += 1
+    elseif rnd < mu+conformist_prob  # conformist copy
+      if poplist[g-1][i] in toplist
+        result[i] = poplist[g-1][i]  # copy if in toplist
+      else
+        result[i] = poplist[g-1][rand(1:N)]
+      end
+    elseif rnd < mu+conformist_prob+anti_conformist_prob
+      if acerbi_bottomlist
+        if poplist[g-1][i] in bottomlist
+          result[i] = poplist[g-1][i]   # retain trait from previous generation
+        else
+          result[i] = poplist[g-1][rand(1:N)]
+        end
+      else
+        if poplist[g-1][i] in toplist
+          result[i] = poplist[g-1][rand(1:length(poplist[g-1]))]
+        else
+          result[i] = poplist[g-1][i]   # retain trait from previous generation
+        end
+      end
+    else     # random copy
+      result[i] = poplist[g-1][rand(1:N)]
+    end
+  end
+  return result
+end
+
 # TODO:  Check if Kandler's model of conformity agrees with Acerbi's.
 @doc """ function acerbi_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, 
-    conformist_prob::Float64, anti_conformist_prob::Float64; 
-    toplist_size::Int64=1, bottomlist_size::Int64=1, bottom::Bool=true,
+    conformist_prob::Float64, anti_conformist_prob::Float64, acerbi_flag::Bool=true;
+    toplist_size::Int64=1, bottomlist_size::Int64=1, acerbi_bottomlist::Bool=true,
     burn_in::Float64=2.0, uniform_start::Bool=false, combine::Bool=true )
 Return either a list of ngens populations, or a combined population depending on whether "combine" is true.
-The population will be generated by a mix of random copying, Acerbi conformist copying, and 
-bottomlist or Acerbi anti-conformist copying.
-bottom==true means use a bottomlist for anti-conformism
-bottom==false means use Acerbi's method of anti-conformism
+If acerbi_flag==true, the population will be generated by a mix of random copying, Acerbi conformist 
+    copying, and bottomlist or Acerbi anti-conformist copying.
+If acerbi_flag==false, the population will be generated by a mix of random, conformist, and
+    anti-conformist copying where conformist copying chooses from the toplist, anti-conformist copying
+    copies from the bottomlist.  This is the Mesoudi-Lycett method.
+bottom==true means use a bottomlist for anti-conformism (only relevant if acerbi_flag == true)
+bottom==false means use Acerbi's method of anti-conformism (only relevant if acerbi_flag == true)
 n = sample size
 N = popsize
 N_mu = mutation rate per population, i. e.,  mu*N.  Thus, mu = N_mu/N.
+acerbi_flag = true means use the Acerbi/Bentley definition of conformity/anti-conformity
+acerbi_flag = false means use the Mesoudi/Lycett definition of conformity/anti-conformity
 """
 function acerbi_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, 
-    conformist_prob::Float64, anti_conformist_prob::Float64; 
-    toplist_size::Int64=1, bottomlist_size::Int64=1, bottom::Bool=true,
+    conformist_prob::Float64, anti_conformist_prob::Float64; acerbi_flag::Bool=true,
+    toplist_size::Int64=1, bottomlist_size::Int64=1, acerbi_bottomlist::Bool=true,
     burn_in::Float64=2.0, uniform_start::Bool=false, combine::Bool=true )
   if conformist_prob + anti_conformist_prob > 1.0
     error("conformist_prob + anti_conformist_prob must be less than 1.0 in power_mixed_conformist.")
   end
   int_burn_in = Int(round(N*burn_in))
+  new_id = zeros(Int64,1)   # new_id[1] is used to assign a new inteter to each innovation
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
-    new_id = 2
+    new_id[1] = 2
   else
     poplist= Population[ collect(1:N) ]
-    new_id = N+1
+    new_id[1] = N+1
   end
   if combine
     pop_result = Population()
   end
   for g = 2:(ngens+int_burn_in)
-    toplist = topKlist( poplist[g-1], toplist_size )
-    if bottom
-      bottomlist = bottomKlist( poplist[g-1], bottomlist_size )
-    end
-    result = zeros(Int64,N)
-    for i = 1:N
-      rnd = rand()
-      if rnd < mu  # mutate
-        result[i] = new_id
-        new_id += 1
-      elseif rnd < mu+conformist_prob  # conformist copy
-        if poplist[g-1][i] in toplist
-          result[i] = poplist[g-1][i]  # copy if in toplist
-        else
-          result[i] = poplist[g-1][rand(1:N)]
-        end
-      elseif rnd < mu+conformist_prob+anti_conformist_prob
-        if bottom
-          if poplist[g-1][i] in bottomlist
-            result[i] = poplist[g-1][i]   # retain trait from previous generation
-          else
-            result[i] = poplist[g-1][rand(1:N)]
-          end
-        else
-          if poplist[g-1][i] in toplist
-            result[i] = poplist[g-1][rand(1:length(poplist[g-1]))]
-          else
-            result[i] = poplist[g-1][i]   # retain trait from previous generation
-          end
-        end
-      else     # random copy
-        result[i] = poplist[g-1][rand(1:N)]
-      end
-    end
+    result = new_acerbi_population( poplist, g, new_id, N, mu, conformist_prob, anti_conformist_prob, 
+        toplist_size, bottomlist_size, acerbi_bottomlist )
     push!( poplist, result )
     if combine && g >= int_burn_in+1
       pop_result = vcat( pop_result, result )
