@@ -69,7 +69,7 @@ function nn_pmixed_trial_result(n::Int64,N::Int64,N_mu::Float64, ngens::Int64, c
 end
 
 function nearly_neutral_trial_result(n::Int64,N::Int64,N_mu::Float64, ngens::Int64, dfe_str::AbstractString,
-    burn_in::Float64, pcounts::Vector{Int64} )
+    burn_in::Float64, pcounts::Vector{Any} )
   trial_result( n, N, N_mu, ngens, 0.0, 0.0, 0.0, 0.0, 0, 0, false, dfe_str, burn_in, pcounts )
 end
 

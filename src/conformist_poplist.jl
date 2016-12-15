@@ -11,7 +11,7 @@ Return the list of the K most frequent elements of pop.
 If there are more than K of these, return the list of all of them.
 """ 
 function topKlist( pop::Population, K::Int64 )
-  c = counter(Int64)
+  c = DataStructures.counter(Int64)
   for x in pop
     push!(c,x)
   end
@@ -29,7 +29,7 @@ Return the list of the K least frequent elements of pop.
 If there are more than K of these, return the list of all of them.
 """ 
 function bottomKlist( pop::Population, K::Int64 )
-  c = counter(Int64)
+  c = DataStructures.counter(Int64)
   for x in pop
     push!(c,x)
   end

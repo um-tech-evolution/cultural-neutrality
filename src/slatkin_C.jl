@@ -47,6 +47,8 @@ end
 @doc """ function slatkin_enum( obs_list::Vector{Int64} )
 The exact version of Slatkin "exact" test.
 obs_list    is the given allele count configuration: should be in decreasing order.
+As of 12/13/16, this function does not give consistent results from run to run.
+And, obviously, it often doesn't agree with running the C program from the command line.
 """
 function slatkin_enum( obs_list::Vector{Int64} )
   obs = Int32[ 0; sort(obs_list, rev=true); 0 ]

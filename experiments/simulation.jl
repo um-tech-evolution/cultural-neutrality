@@ -1,7 +1,6 @@
 #= Nearly neutral version of simulation
 =#
 
-#module NeutCultEvo # Should this be a module?
 #=
 At this time, runs only on a Linux system due to the dependence on the shared library slatkin.so.
  The source code for compiling this shared library is at https://github.com/um-tech-evolution/slatkin-exact-tools
@@ -12,10 +11,10 @@ At this time, runs only on a Linux system due to the dependence on the shared li
  See analysis.jl  for interpretation of the resulting CSV file.
  Suggested usage:  julia analysis.jl configs/example1
 =#
-include("../src/NeutralCulturalEvolution.jl")
-include("conformist.jl")
 #Note:  The location of the shared library file  slatkin.so  must be in LD_LIBRARY_PATH on a Linux system
-@everywhere using NeutralCulturalEvolution
+#@everywhere using NeutralCulturalEvolution  # moved to the end of this file due to what I think is a bug in Julia
+include("conformist.jl")
+include("../src/NeutralCulturalEvolution.jl")
 
 # If the next 2 lines are changed, the corresponding changes also need to be made in the trial_result type and in writerow.
 const p_homoz_headers = [ "p_1_4", "p_1_6", "p_2_6", "p_3_0" ]
@@ -39,17 +38,17 @@ function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}
     "# popsize_multiplier=$(popsize_multiplier)"
     ]
   write(stream, join(param_strings, "\n"), "\n")
-  first_heads = ["trial", "N", "n", "N_mu","K"]
+  first_heads = ["trial", "n", "N", "N_mu","K"]
   last_heads = vcat([ "s_prob", 
     #"se_prob", 
     #"we_prob", 
     "s_homoz", "w_homoz"], p_homoz_headers )
   if simtype == 1
-    mid_heads = ["cpower"]
+    mid_heads = [ "cprob", "acprob", "cpower", "acpower"]
   elseif simtype == 2
-    mid_heads = ["acer_C", "acer_topsize"]
+    mid_heads = ["acerflg", "bottom", "cprob", "acprob", "topsz", "bottmsz"]
   elseif simtype == 3
-    mid_heads = ["nn_select"]
+    mid_heads = [ "cprob", "acprob", "cpower", "acpower"  ]
   else
     mid_heads = []
   end
@@ -63,10 +62,14 @@ type trial_result
   n::Int64
   N_mu::Float64
   K::Int64
+  cprob::Float64
+  acprob::Float64
   cpower::Float64
-  acer_C::Float64
-  acer_topsize::Int64
-  nn_selection::Int64
+  acpower::Float64
+  topsize::Int64
+  bottomsize::Int64
+  bottom::Bool
+  acerbi_flag::Bool
   s_prob::Float64
   # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
   #se_prob::Float64
@@ -85,9 +88,9 @@ Write a row to the CSV file.
 function writerow(stream::IO, simtype::Int64, trial::Int64, tr::trial_result  )
   first = Any[
     trial,
-    tr.N,           # popsize
     tr.n,           # sample size
-    tr.N_mu,        # N/mu
+    tr.N,           # popsize
+    tr.N_mu,        # N/mu, population mutation rate
     tr.K,           # The number of alleles in the sample
   ]
   last = Any[
@@ -102,46 +105,54 @@ function writerow(stream::IO, simtype::Int64, trial::Int64, tr::trial_result  )
     tr.p_2_6,      # p-homozygosity for p = 2.6
     tr.p_3_0,      # p-homozygosity for p = 3.0
   ]
-  if simtype == 0 
+  if simtype == 0  
     mid = Any[]
-  elseif simtype == 1
+  elseif simtype == 1 || simtype == 3
     mid = Any[ 
-      tr.cpower 
+      tr.cprob,
+      tr.acprob,
+      tr.cpower,
+      tr.acpower
     ]
   elseif simtype == 2
     mid = Any[ 
-      tr.acer_C,
-      tr.acer_topsize
-    ]
-  elseif simtype == 3
-    mid = Any[ 
-      tr.nn_selection 
+      tr.cprob
+      tr.acprob
+      tr.bottom
+      tr.acerbi_flag
+      tr.topsize
+      tr.bottomsize
     ]
   end
   line = join( vcat( first, mid, last ), "," )
   write(stream, line, "\n")
 end
 
-@doc """ function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1.0, burn_in::Float64=2.0, 
-      slat_reps::Int64=10000, cpower::Float64=0.0, acer_C::Float64=0.0, acer_topsize::Int64=10 )
+@doc """ 
 Run a population evolution and return various statitics based on a single generation after burn in.
 """
-function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1.0, burn_in::Float64=2.0, 
-      slat_reps::Int64=10000, cpower::Float64=0.0, acer_C::Float64=0.0, acer_topsize::Int64=10, nn_select::Int64=0 )
+function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1.0, burn_in::Float64=2.0, slat_reps::Int64=10000, 
+      cprob::Float64=0.0, acprob::Float64=0.0, cpower::Float64=0.0, acpower::Float64=0.0, dfe::Function=dfe_neutral,
+      acerbi_flag::Bool=true, bottom::Bool=true,topsize::Int64=1,bottomsize::Int64=1)
   if psize_mult > 1.0  # Define popsize N different from sample size n
     N = Int(ceil(psize_mult*n))
     #println("N: ", N)
   else
     N = n
   end
-  if cpower==0.0 && acer_C==0.0 && !isdefined(:dfe)
-    pop = neutral_poplist(N, N_mu/N, ngens, burn_in=burn_in )[ngens]
-  elseif cpower != 0.0
-    pop = power_conformist_poplist(N, N_mu/N, ngens, burn_in=burn_in, conformist_power=cpower )[ngens]
-  elseif acer_C != 0.0
-    pop = acerbi_conformist_poplist(N, N_mu/N, ngens, acer_C, burn_in=burn_in, toplist_size=acer_topsize  )[ngens]
-  elseif isdefined(:dfe)   # Nearly neutral
-    pop = nearly_neutral_poplist(N, N_mu/N, ngens, dfe, burn_in=burn_in, nn_select=nn_select )[ngens]
+  if simtype == 0
+    pop = neutral_poplist(N, N_mu, ngens, burn_in=burn_in, combine=false )[ngens]
+  elseif simtype == 1
+    pop = power_mixed_conformist_poplist(N, N_mu, ngens, cprob, acprob, conformist_power=cpower, anti_conformist_power=acpower,
+      burn_in=burn_in, combine=false )[ngens]
+  elseif simtype == 2
+    pop = acerbi_mixed_conformist_poplist(N, N_mu, ngens, cprob, acprob, acerbi_flag=true,
+      toplist_size=topsize, bottomlist_size=bottomsize, 
+      burn_in=burn_in, combine=false  )[ngens]
+  elseif simtype == 3
+    pop = nearly_neutral_power_mixed_conformist_poplist(N, N_mu, ngens, cprob, acprob, conformist_power=cpower, 
+      anti_conformist_power=acpower, dfe = dfe,
+      burn_in=burn_in, combine=false )[ngens]
   end
   if psize_mult > 1.0 # take a random sample of size n from population of size N
     new_pop = sample_population( pop, n )
@@ -164,8 +175,7 @@ function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1
   #p_1_6 = p_homozygosity( p64, 1.6 )
   #p_2_6 = p_homozygosity( p64, 2.6 )
   #p_3_0 = p_homozygosity( p64, 3.0 )
-  #trial_result(N, n, N_mu, length(p64), cpower, acer_C, acer_topsize, sr.probability, w_homoz, s_homoz, p_1_4, p_1_6, p_2_1, p_2_4 )
-  trial_result(N, n, N_mu, length(p64), cpower, acer_C, acer_topsize, nn_select, sr.probability, 
+  trial_result(N, n, N_mu, length(p64), cprob, acprob, cpower, acpower, topsize, bottomsize, bottom, acerbi_flag, sr.probability, 
     # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
     #se_prob, 
     #we_prob, 
@@ -174,7 +184,6 @@ function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1
     p_homozygosity( p64, p_homoz_coeffs[2]), 
     p_homozygosity( p64, p_homoz_coeffs[3]), 
     p_homozygosity( p64, p_homoz_coeffs[4]) )
-
 end
 
 type neutral_trial_type
@@ -182,23 +191,46 @@ type neutral_trial_type
   N_mu::Float64
 end
 
-type nearly_neutral_trial_type
-  n::Int64
-  N_mu::Float64
-  nn_select::Int64   # 1 means there is nearly neutral selection, 0 means no selection
-end
-
 type pconform_trial_type
   n::Int64
   N_mu::Float64
+  cprob::Float64
+  acprob::Float64
   cpower::Float64
+  acpower::Float64
+end
+
+function pconform_trial_type()
+  pconform_trial_type(0, 0.0, 0.0, 0.0, 0.0, 0.0)
 end
 
 type aconform_trial_type
   n::Int64
   N_mu::Float64
-  acer_C::Float64
-  acer_topsize::Int64
+  cprob::Float64
+  acprob::Float64
+  acerbi_flag::Bool
+  bottom::Bool
+  topsize::Int64
+  bottomsize::Int64
+end
+
+function aconform_trial_type()
+  aconform_trial_type(0, 0.0, 0.0, 0.0, true, false, 0, 0)
+end
+
+type nn_pconform_trial_type
+  n::Int64
+  N_mu::Float64
+  cprob::Float64
+  acprob::Float64
+  cpower::Float64
+  acpower::Float64
+  dfe::Function
+end
+
+function nn_pconform_trial_type()
+  nn_pconform_trial_type(0, 0.0, 0.0, 0.0, 0.0, 0.0, dfe_neutral )
 end
 
 function build_global_vars( n_list::Vector{Int64} )
@@ -206,14 +238,12 @@ function build_global_vars( n_list::Vector{Int64} )
   @everywhere Btbl = BT(max_n,max_n)
 end
   
-@doc """ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, 
-    ngens::Int64, burn_in::Float64; cpower_list::Vector{Float64}=Float64[], slat_reps::Int64=100000, acer_C_list::Vector{Float64}=Float64[], 
-
+@doc """ 
 This is the function that actually runs the simulation.  
 A list of "trials" (arguments to run_trial()) is produced that is fed to pmap so that trials are run in parallel.
 Arguments:
 simtype:  1 means use power model of conformity (corresponds to length(cpower_list)>0)
-          2 means use Acerbi model of conformity (corresponds to length(acer_C_list)>0)
+          2 means use Acerbi model of conformity 
 T:        the number of trials to run for each setting of N and N_mu
 n_list:   a list of sample sizes
 N_mu_list:  a list of per-generation mutation rates (the per-locus mutation rate is N_mu/N)
@@ -222,10 +252,14 @@ burn_in:  the number of preliminary generations run to stabilize as a multiple o
 ngens:    the number of generations to run after burn in
 slat_reps: the number of monte-carlo reps to use in the Slatkin test
 """
-
 function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, 
-    ngens::Int64, burn_in::Float64; cpower_list::Vector{Float64}=Float64[], slat_reps::Int64=100000, acer_C_list::Vector{Float64}=Float64[], 
-    acer_topsize::Int64=10, popsize_multiplier::Float64=1.0 )
+      ngens::Int64, burn_in::Float64; slat_reps::Int64=100000,  popsize_multiplier::Float64=1.0,
+      cprob_list::Vector{Float64}=Float64[], acprob_list::Vector{Float64}=Float64[],
+      cpower_list::Vector{Float64}=Float64[], acpower_list::Vector{Float64}=Float64[],
+      acer_flag_list::Vector{Bool}=Bool[], bottom_list::Vector{Bool}=Bool[],
+      topsize_list::Vector{Int64}=Int64[], bottomsize_list::Vector{Int64}=Int64[],
+      dfe::Function=dfe_neutral )
+  println("run_simulation")
   for n in n_list
     if n > typemax(ConfigInt)
       error("Reset the type ConfigInt in src/aliases.jl so that n <= typemax(ConfigInt) for all n in n_list.")
@@ -235,7 +269,6 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
   stream = open("$(simname).csv", "w")
   if popsize_multiplier > 1.0
     N_list = map(x->popsize_multiplier*x, n_list)
-    println(" N_list: ",N_list)
   end
   writeheader(stream,simtype,T,n_list,N_mu_list,ngens,burn_in)
   if simtype == 0   # neutral, no conformity
@@ -249,8 +282,14 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
     t_list = pconform_trial_type[]
     for n in n_list
       for N_mu in N_mu_list
-        for cpower in cpower_list
-          push!(t_list,pconform_trial_type(n,N_mu,cpower))
+        for cprob in cprob_list
+          for acprob in acprob_list
+            for cpower in cpower_list
+              for acpower in acpower_list
+                push!(t_list,pconform_trial_type(n,N_mu,cprob,acprob,cpower,acpower))
+              end
+            end
+          end
         end
       end
     end
@@ -258,17 +297,33 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
     t_list = aconform_trial_type[]
     for n in n_list
       for N_mu in N_mu_list
-        for acer_C in acer_C_list
-          push!(t_list,aconform_trial_type(n,N_mu,acer_C,acer_topsize))
+        for cprob in cprob_list
+          for acprob in acprob_list
+            for acer_flag in acer_flag_list
+              for bottom in bottom_list
+                for topsize in topsize_list
+                  for bottomsize in bottomsize_list
+                    push!(t_list,aconform_trial_type(n,N_mu,cprob,acprob,acer_flag,bottom,topsize,bottomsize))
+                  end
+                end
+              end
+            end
+          end
         end
       end
     end
-  elseif simtype == 3   # Nearly neutral
-    t_list = nearly_neutral_trial_type[]
+  elseif simtype == 3   # Nearly neutral power conformist
+    t_list = nn_pconform_trial_type[]
     for n in n_list
       for N_mu in N_mu_list
-        for nn_sel = 0:1   # 0 means no selection, 1 means nearly neutral selection
-          push!(t_list,nearly_neutral_trial_type(n,N_mu,nn_sel))
+        for cprob in cprob_list
+          for acprob in acprob_list
+            for cpower in cpower_list
+              for acpower in acpower_list
+                push!(t_list,nn_pconform_trial_type(n,N_mu,cprob,acprob,cpower,acpower,dfe))
+              end
+            end
+          end
         end
       end
     end
@@ -280,11 +335,15 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
   if simtype == 0   # neutral conform
     trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 1   # power conform
-    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps, cpower=tr.cpower ), trial_list )
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
+        burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 2  # Acerbi conform
-    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps, acer_C=tr.acer_C, acer_topsize=tr.acer_topsize ), trial_list )
-  elseif simtype == 3  # Nearly neutral
-    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps, nn_select=tr.nn_select ), trial_list )
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, 
+        acerbi_flag=tr.acerbi_flag, bottom=tr.bottom, topsize=tr.topsize, bottomsize=tr.bottomsize,
+        burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
+  elseif simtype == 3  # Nearly neutral power conformist
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
+        dfe=tr.dfe, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   end
   trial = 1
   for t_result in trial_results
@@ -294,5 +353,5 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
   end
   close(stream)
 end
-
-#end #module
+#include("conformist.jl")
+#include("../src/NeutralCulturalEvolution.jl")

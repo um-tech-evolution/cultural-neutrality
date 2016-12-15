@@ -5,7 +5,7 @@ This is a single locus model.  Haploidy is assumed---which means that genotypes 
 export neutral_poplist, pop_counts8, pop_counts32,  pop_counts64, poplist_counts32, 
     poplist_counts64, simple_poplist, ewens_K_est, sample_population, combine_pops, simple_combined_pop
 
-using DataStructures
+#using DataStructures
 #using DataFrames
 
 @doc """ function simple_poplist( N::Int64, mu_per_locus::Float64, ngens::Int64, burn_in::Int64 )

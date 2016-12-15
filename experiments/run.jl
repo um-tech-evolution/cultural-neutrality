@@ -12,26 +12,31 @@ Command-line program to run the simulation.
 =#
 
 if length(ARGS) == 0
-  simname = "../experiments/configs/example1"
+  simname = "../experiments/configs/example0"
 else
   simname = ARGS[1]
 end
 
 include("$(simname).jl")
 
-
-if isdefined(:cp_list)
-  simtype = 1   # power conformity
-  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, cpower_list=cp_list, 
-    popsize_multiplier=popsize_multiplier )
-elseif isdefined(:acer_C_list) && isdefined(:acer_topsize)
-  simtype = 2   # Acerbi conformity
-  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, acer_C_list=acer_C_list, 
-    acer_topsize=acer_topsize, popsize_multiplier=popsize_multiplier )
-elseif isdefined(:dfe) 
-  simtype = 3   # Nearly Neutral
-  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, popsize_multiplier=popsize_multiplier )
+if  simtype == 0   # Neutral---no conformity
+  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, 
+      popsize_multiplier=popsize_multiplier, slat_reps=slat_reps )
+elseif  simtype == 1   # power conformity
+  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, 
+      cprob_list=cprob_list, acprob_list=acprob_list, 
+      cpower_list=cpower_list, acpower_list=acpower_list, 
+      popsize_multiplier=popsize_multiplier, slat_reps=slat_reps )
+elseif  simtype == 2   # Acerbi conformity
+  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, 
+      cprob_list=cprob_list, acprob_list=acprob_list, 
+      acer_flag_list=acer_flag_list, bottom_list=bottom_list, topsize_list=topsize_list, bottomsize_list=bottomsize_list,
+      popsize_multiplier=popsize_multiplier, slat_reps=slat_reps )
+elseif  simtype == 3   # Nearly Neutral Power Conformist
+  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, 
+      cprob_list=cprob_list, acprob_list=acprob_list, 
+      cpower_list=cpower_list, acpower_list=acpower_list, 
+      dfe=dfe, popsize_multiplier=popsize_multiplier, slat_reps=slat_reps )
 else
-  simtype = 0   # Neutral---no conformity
-  run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, popsize_multiplier=popsize_multiplier )
+  error("illegal simtype")
 end

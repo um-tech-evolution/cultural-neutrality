@@ -4,7 +4,7 @@ Revisions: Alden Wright, Oct. to  Dec. 2016
 =#
 export power_law_estimates, power_law_bootstrap
 using RCall
-using DataFrames
+#using DataFrames
 R"library(poweRlaw)"
 
 @doc """ function power_law_estimates(data_vector, threshold_vector)
@@ -13,8 +13,8 @@ R"library(poweRlaw)"
     The estimates of the alpha paramter are conditioned the value of xmin.
 """
 function power_law_estimates(data_vector, filename::String=""; PNGflag::Bool=true, title::String="", subtitle::String="", top_str::String="" )
-    @rput title
-    @rput subtitle
+    @RCall.rput title
+    @RCall.rput subtitle
     xlab_str = "Frequency of variant"
     ylab_str = "Proportion of variants"
     alpha_str = "alpha ="
@@ -28,7 +28,7 @@ function power_law_estimates(data_vector, filename::String=""; PNGflag::Bool=tru
         text(5,min(plt$y),paste($alpha_str,signif(est_pl$pars,3)))
         mtext($top_str,side=3)
     "
-    est_pc = rcopy(R"est_pc")
+    est_pc = RCall.rcopy(R"est_pc")
     if PNGflag && length(filename) > 0 && filename[end-3:end] == ".png"
       R" 
         png($filename) 
@@ -39,7 +39,7 @@ function power_law_estimates(data_vector, filename::String=""; PNGflag::Bool=tru
         dev.off()
       "
     end
-    #alpha_vals = rcopy(R"est_scan")
+    #alpha_vals = RCall.rcopy(R"est_scan")
     vals = Dict(
                 "xmin" => est_pc[:xmin],
                 "alpha" => est_pc[:pars]
@@ -52,8 +52,8 @@ function power_law_bootstrap(data_vector; nthreads::Int64=8, nsims::Int64=5000  
         est_pl = estimate_xmin(m_pl)
         bsp = bootstrap_p( m_pl, xmins=seq(ceiling(est_pl$xmin/2),ceiling(est_pl$xmin),ceiling(est_pl$xmin/4)),no_of_sims=$nsims, threads=$nthreads)
     "
-    est_pc = rcopy(R"est_pl")
-    bsp = rcopy(R"bsp")
+    est_pc = RCall.rcopy(R"est_pl")
+    bsp = RCall.rcopy(R"bsp")
     vals = Dict(
                 :xmin => est_pc[:xmin],
                 :alpha => est_pc[:pars],
@@ -64,7 +64,7 @@ end
 
 function test_driver()
     # The following reads 2014 US baby names into an data frame.
-    bndf = readtable("../data/BabyNames/us_baby_names_by_year2014.csv")
+    bndf = DataFrames.readtable("../data/BabyNames/us_baby_names_by_year2014.csv")
     answer = power_law_estimates(bndf[:GBirths])
     #answer = power_law_estimates(bndf[:GBirths],[262,280,300,320])
     #answer = power_law_estimates([1,2,3,4,5],[1,2,3])

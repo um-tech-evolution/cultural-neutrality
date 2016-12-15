@@ -1,4 +1,4 @@
-using DataStructures
+#using DataStructures
 export freq_scaled_fitness, propsel, propsel!
 
 @doc """ function freq_scaled_fitness( pop::Population, c::Float64 )
@@ -12,7 +12,7 @@ c < 0.0    gives an anti-conformist fitness where less elements are favored
 """
 #=
 function freq_scaled_fitness( pop::Population, w::Vector{Float64}, c::Float64 )
-  frequency = counter(Int64)
+  frequency = DataStructures.counter(Int64)
   for p in pop 
     push!( frequency, p )
   end
@@ -24,7 +24,7 @@ end
 Same as previous version except that fitness is stored in a dictionary
 """
 function freq_scaled_fitness( pop::Population, c::Float64, fitness_table::Dict{Int64,Float64} )
-  frequency = counter(Int64)
+  frequency = DataStructures.counter(Int64)
   for p in pop 
     push!( frequency, p )
   end
