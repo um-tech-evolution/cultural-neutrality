@@ -1,6 +1,6 @@
 export fitness, nearly_neutral_poplist, dfe_deleterious,dfe_advantageous, dfe_mixed, dfe_mod, dfe_neutral
 
-#using Distributions
+using Distributions
 
 @doc """ function dfe_fitness( p::Int64, dfe::Function, fitness_table::Dict{Int64,Float64} )
 Fitness function as saveed in dictionary fitness_table.

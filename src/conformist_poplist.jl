@@ -1,5 +1,4 @@
 using DataStructures
-# TODO:  put these type aliases in a separate file
 
 export topKlist, bottomKlist, topKset, bottomKset, turnover, power_conformist_poplist, acerbi_conformist_poplist, 
     acerbi_anti_conformist_poplist, acerbi_mixed_conformist_poplist, power_mixed_conformist_poplist, 
