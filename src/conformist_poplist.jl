@@ -408,7 +408,7 @@ function acerbi_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
   end
   poplist[int_burn_in+1:end]
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -453,6 +453,7 @@ function power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
     fitness_table = Dict{Int64,Float64}()
     dfe = dfe_neutral
     rp = randperm(N)
+    # Choose both a conformist and an anti-conformist population using proportional selection
     if conformist_prob > 0.0
       conf_fitness_table = freq_scaled_fitness( poplist[g-1], conformist_power, fitness_table )
       new_conf_pop = propsel( poplist[g-1], dfe, conf_fitness_table )[rp]
@@ -461,6 +462,8 @@ function power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
       anti_conf_fitness_table = freq_scaled_fitness( poplist[g-1], anti_conformist_power, fitness_table )
       new_anti_conf_pop = propsel( poplist[g-1], dfe, anti_conf_fitness_table )[rp]
     end
+    # Choose the next generation population by choosing from these according to conformist_prob
+    #     and anti_conformist_prob
     result = zeros(Int64,N)
     for i = 1:N
       rnd = rand()
@@ -482,7 +485,7 @@ function power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
   end
   poplist[int_burn_in+1:end]
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -571,7 +574,7 @@ function nearly_neutral_power_mixed_conformist_poplist( N::Int64, N_mu::Float64,
   end
   poplist[int_burn_in+1:end]
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end

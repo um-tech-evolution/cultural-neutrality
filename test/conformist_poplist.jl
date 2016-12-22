@@ -1,6 +1,7 @@
+# Verifed to work on 12/21/16.
 using FactCheck
 include("../src/NeutralCulturalEvolution.jl")
-using NeutralCulturalEvolution
+#using NeutralCulturalEvolution
 #include("../src/conformist_poplist.jl")
 #include("../src/freq_scaled_fitness.jl")
 context("conformist_poplist.jl") do
@@ -13,13 +14,14 @@ context("conformist_poplist.jl") do
     for f in functs
       facts("testing $f") do
         N_mu = 2.0
-        plist = power_mixed_conformist_poplist(N,N_mu,ngens,conformist_prob,anti_conformist_prob,combine=false)
+        plist = f(N,N_mu,ngens,conformist_prob,anti_conformist_prob,combine=false)
         @fact length(plist) --> ngens
-        plist = power_mixed_conformist_poplist(N,N_mu,ngens,conformist_prob,anti_conformist_prob,combine=true)
-        @fact length(plist) --> N*ngens
+        plist = f(N,N_mu,ngens,conformist_prob,anti_conformist_prob,combine=true)
+        @fact length(plist) --> 1
+        @fact length(plist[1]) --> N*ngens
         N_mu = 0.0  # no mutation
-        pcnts = pop_counts64(power_mixed_conformist_poplist(N,N_mu,ngens,conformist_prob,anti_conformist_prob,
-            combine=true,uniform_start=true,burn_in=0.0))
+        pcnts = pop_counts64(f(N,N_mu,ngens,conformist_prob,anti_conformist_prob,
+            combine=true,uniform_start=true,burn_in=0.0)[1])
         @fact length(pcnts) --> 1
       end
     end

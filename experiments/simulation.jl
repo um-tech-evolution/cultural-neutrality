@@ -333,16 +333,16 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
     trial_list = vcat(trial_list,t_list)
   end
   if simtype == 0   # neutral conform
-    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
+    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 1   # power conform
-    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
+    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
         burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 2  # Acerbi conform
-    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, 
+    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, 
         acerbi_flag=tr.acerbi_flag, bottom=tr.bottom, topsize=tr.topsize, bottomsize=tr.bottomsize,
         burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 3  # Nearly neutral power conformist
-    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
+    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
         dfe=tr.dfe, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   end
   trial = 1

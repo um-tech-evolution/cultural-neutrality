@@ -125,15 +125,9 @@ function run_trials_acerbi_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, 
     conformist_prob::Float64, anti_conformist_prob::Float64; acerbi_flag::Bool=true, 
     toplist_size::Int64=1, bottomlist_size::Int64=1, acerbi_bottomlist::Bool=true,
     burn_in::Float64=2.0, CSVflag::Bool=true  )
-  if n < N
-    p_counts64 = pop_counts64(sample_population( acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
+  p_counts64 = pop_counts64(sample_population( acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
       conformist_prob, anti_conformist_prob, acerbi_flag=acerbi_flag, toplist_size=toplist_size, 
       bottomlist_size=bottomlist_size, acerbi_bottomlist=acerbi_bottomlist, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64( acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
-      conformist_prob, anti_conformist_prob, acerbi_flag=acerbi_flag, toplist_size=toplist_size, 
-      bottomlist_size=bottomlist_size, acerbi_bottomlist=acerbi_bottomlist, burn_in=burn_in ))
-  end
   if acerbi_bottomlist
     filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
   else
@@ -174,17 +168,10 @@ function run_trials_power_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, n
     conformist_prob::Float64, anti_conformist_prob::Float64; 
     conformist_power::Float64=0.0, anti_conformist_power=0.0,
     burn_in::Float64=2.0, CSVflag::Bool=true )
-  if n < N
-    p_counts64 = pop_counts64(sample_population(power_mixed_conformist_poplist(N, N_mu, ngens, 
+  p_counts64 = pop_counts64(sample_population(power_mixed_conformist_poplist(N, N_mu, ngens, 
       conformist_prob, anti_conformist_prob, 
       conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
       burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(power_mixed_conformist_poplist(N, N_mu, ngens, 
-      conformist_prob, anti_conformist_prob,  
-      conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
-      burn_in=burn_in ))
-  end
   filename = "$(data_string)power_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
   ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Power Mixed Conformist", subtitle="cpower=$(conformist_power) cprob=$(conformist_prob) acpower=$(anti_conformist_power) acprob=$(anti_conformist_prob)")
   ptr = pmixed_trial_result(n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, 
@@ -226,17 +213,10 @@ function run_trials_nearly_neutral_power_mixed_conformist( n::Int64, N::Int64, N
   else
     error("illegal dfe function in run_trials_nearly_neutral_power_mixed_conformist")
   end
-  if n < N
-    p_counts64 = pop_counts64(sample_population(nearly_neutral_power_mixed_conformist_poplist(N, N_mu, ngens, 
+  p_counts64 = pop_counts64(sample_population(nearly_neutral_power_mixed_conformist_poplist(N, N_mu, ngens, 
       conformist_prob, anti_conformist_prob, dfe=dfe_funct,
       conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
       burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(nearly_neutral_power_mixed_conformist_poplist(N, N_mu, ngens, 
-      conformist_prob, anti_conformist_prob, dfe=dfe_funct, 
-      conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
-      burn_in=burn_in ))
-  end
   filename = "$(data_string)nn_power_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob)_dfe:$(dfe_str).png"
   println("filename: ",filename)
   ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Nearly Neutral Power Mixed", subtitle="cpower=$(conformist_power) cprob=$(conformist_prob) acpower=$(anti_conformist_power) acprob=$(anti_conformist_prob)", top_str=dfe_str )
@@ -290,11 +270,7 @@ function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::I
   else
     error("illegal dfe function in run_trials_nearly_neutral")
   end
-  if n < N
-    p_counts64 = pop_counts64(sample_population(nearly_neutral_poplist(N, N_mu, ngens, dfe_funct, burn_in=burn_in ),n))
-  else
-    p_counts64 = pop_counts64(nearly_neutral_poplist(N, N_mu, ngens, dfe_funct, burn_in=burn_in ))
-  end
+  p_counts64 = pop_counts64(sample_population(nearly_neutral_poplist(N, N_mu, ngens, dfe_funct, burn_in=burn_in ),n))
   if PNGflag
     filename = "$(data_string)n_neutral_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_$(dfe_str).png"
   else  # display plot instead of writing plot file

@@ -1,3 +1,7 @@
+# On 12/21/16 these runs fail.
+# Problem 1:  there are problems in combining -p ?? with -L ??.
+# See the notes/12_21_16  for a work-around.
+# Problem 2:  There are unresolved bugs in experiments/hyptest.jl
 #!/usr/bin/bash
 # The following should run without errors.  
 

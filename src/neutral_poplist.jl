@@ -36,11 +36,16 @@ function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64
       end
     end
     push!(poplist,result)
+    println("b result: ",result)
+    println("b pop_result: ",pop_result)
     if combine && g >= int_burn_in+1
       pop_result = vcat( pop_result, result )
     end
+    println("a result: ",result)
+    println("a pop_result: ",pop_result)
   end
   if combine
+    println("returning pop_result: ",pop_result)
     return pop_result
   else
     return poplist[int_burn_in+1:end]
@@ -102,7 +107,7 @@ function neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float6
     end
   end
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -190,6 +195,9 @@ end
  Take a random sample (with replcement) of size new_size from a population
 """
 function sample_population( pop::Population, new_size::Int64 )
+  if length(pop) == new_size
+    return pop
+  end
   indices = rand(1:length(pop),new_size)
   new_pop = [ pop[i] for i in indices ]
 end
@@ -203,7 +211,7 @@ function combine_pops( poplist::Array{Vector{Int64},1} )
     return poplist[1]
   end
   combined_pop = Int64[]
-  for pop in poplst
+  for pop in poplist
     combined_pop = vcat(combined_pop,pop)
   end
   combined_pop
