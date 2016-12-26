@@ -43,13 +43,15 @@ function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}
     #"se_prob", 
     #"we_prob", 
     "s_homoz", "w_homoz"], p_homoz_headers )
-  if simtype == 1
+  if simtype == 0  # Neutral
+    mid_heads = []
+  elseif simtype == 1  # Power conformist
     mid_heads = [ "cprob", "acprob", "cpower", "acpower"]
-  elseif simtype == 2
+  elseif simtype == 2  # Acerbi or toplist/bottomlist conformity
     mid_heads = ["acerflg", "bottom", "cprob", "acprob", "topsz", "bottmsz"]
-  elseif simtype == 3
+  elseif simtype == 3  # Power mixed conformity
     mid_heads = [ "cprob", "acprob", "cpower", "acpower"  ]
-  else
+  else   
     mid_heads = []
   end
   line = join(vcat( first_heads, mid_heads, last_heads), ",")

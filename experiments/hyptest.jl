@@ -1,19 +1,20 @@
 #=
 Nearly neutral version:  8/30/16
+Mixed conformist version  12/25/16
 
 Analyzes the CSV file produced by running simulation.jl and run.jl, followed by signficance.jl
-This CSV file must include the case where cpower == 0 or acer_C == 0 
+This CSV file must include the case where cpower == 0 or ?????  TODO:  fix
   which is the unbiased tranmission case.
 If the neutral infinite alleles model holds, then the expected homozygosity is 1.0/(1.0+theta)
     where theta = 2*N*mu.
 Applies the Watterson and Slatkin homozygosity tests to the null hypothesis that  the homozygosity 
     predicted by the Watterson and Slatkin tests is equal to  1.0/(1.0+theta) where theta = 2*N*mu.
     Note that N and mu are known parameters of the simulation.  
-theta == 0.0 against the alternatives:
-   theta < 0.0    for conformist transmission
-   theta > 0.0    for anti-conformist transmission
+{Watterson,Slatkin} homozygosity == 1/(1+theta) against the alternatives:
+   homo > 1/(1+theta)     for conformist transmission
+   homo < 1/(1+theta)     for anti-conformist transmission
 Also applies the Slatkin "exact" test (more precicely, the Monte Carlo extension) to the
-same null and alternative hypotheses.
+same null and alternative hypotheses.  The Slatkin test returns a p value.
 
 The mean, lo_quantile, hi_quantile, and type 2 error are computed for the following:
   * watterson_homozygosity (w_homoz, wz)
@@ -52,6 +53,9 @@ using DataFrames
 include("../src/NeutralCulturalEvolution.jl")
 include("dataframe_io.jl")
 
+const list_symbols = [:n_list, :N_mu_list, :cprob_list, :acprob_list, :cpower_list, :acpower_list, 
+      :acer_flag_list, :bottom_list, :topsize_list, :bottomsize_list]
+
 @doc """ function count_field_accept( lo_val::Float64, hi_val::Float64, df, ffield::Symbol, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64 )
   Given a cvalue, a value of N, and a value of N_mu, count the number of times that the test selected by the ffield.
   If lo_val > 0.0 and hi_val == 1.0, one-sided low.
@@ -70,18 +74,20 @@ end
 Returns a data frame that includes the lo_val and 1.0-lo_val quantiles of the null hypothesis distribution
   and the alternative hypothesis distributions.
 Includes zero arrays for the Watterson and Slatkin homozygosity type 2 error and the Slatkin probability type 2 error.
-  These will be computered later.
+  These will be computed later.
 """
-function hyptest_results( df::DataFrame, lo_val::Float64, hi_val::Float64, c_symbol::Symbol, p_sig_symbol::Symbol=:none )
+function hyptest_results( df::DataFrame, multi_value_list_syms::Vector{Symbol}, one_value_list_syms::Vector{Symbol},
+    lo_val::Float64, hi_val::Float64, c_symbol::Symbol, p_sig_symbol::Symbol=:none )
   lo_quantile = lo_val > 0.0 ? lo_val : (1.0-hi_val)
   hi_quantile = hi_val < 1.0 ? hi_val : 1.0-lo_val
   println("lo_quantile: ",lo_quantile,"  hi_quantile: ",hi_quantile)
   # Note that c_symbol might be :cpower or :acer_C or :nn_select.  
-  result_df = by(df, [ c_symbol, :N_mu, :N ] ) do d
+  result_df = by(df, multi_value_list_syms ) do d
     if p_sig_symbol != :none
       p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
     end
-    rdf = DataFrame(
+    rdf = DataFrame()
+    #=
       n = d[:n][1],
       homozyg = 1.0/(1.0 + 2.0*d[:N_mu][1]),
       mean_w_homoz=mean(d[:w_homoz]),
@@ -101,6 +107,15 @@ function hyptest_results( df::DataFrame, lo_val::Float64, hi_val::Float64, c_sym
       #wep_hi = quantile(d[:we_prob],hi_quantile),
       #wep_t2err = 0.0
     )
+    =#
+    for s in one_value_list_syms
+      rdf[ Symbol(string(s)[1:end-5]) ] = eval(s)[1]
+    end
+    rdf[:n] = d[:n][1]
+    rdf[:mean_w_homoz] = mean(d[:w_homoz])
+    rdf[:mean_s_homoz] = mean(d[:s_homoz])
+    rdf[:mean_s_prob] = mean(d[:s_prob])
+    rdf[:sp_t2err] =  0.0
     if p_sig_symbol != :none
       rdf[:p_sym_mean]=mean(d[p_symbol])
       rdf[:p_sym_lo] = quantile(d[p_symbol],lo_quantile)
@@ -124,6 +139,8 @@ function hyptest_results( df::DataFrame, lo_val::Float64, hi_val::Float64, c_sym
   result_df
 end
 
+
+
 @doc """ function hyptest( simname )
 
 Adds columns "w_typ2err" (Watterson) and "s_typ2err" (Slatkin)  to the dataframe computed by function 
@@ -133,31 +150,52 @@ For the alternative hypothesis rows, this is the type II error corresponding to 
 """
 function hyptest( simname )
   global t2error_sides
+  global list_symbols
   println("simname: ",simname)
 	include("$(simname).jl")
+  multi_value_list_syms = Symbol[]
+  one_value_list_syms = Symbol[]
+  for s in list_symbols
+    println("s: ",s)
+    if isdefined(s) 
+      println("  s: ",s)
+      if length(eval(s)) > 1
+        ssym = Symbol(string(s)[1:end-5])
+        push!( multi_value_list_syms, ssym )
+      else
+        push!( one_value_list_syms, s )
+      end
+    end
+  end
+  println("multi_value_list_syms: ",multi_value_list_syms)
+  println("one_value_list_syms: ",one_value_list_syms)
   if !isdefined( :t2error_sides )
     t2error_sides = 2     # use 2-sided if not specified.
     println("setting t2error_sides = 2")
   end
   println("t2error_sides: ",t2error_sides)
-  if isdefined(:cp_list)  # power conformity
-    if minimum( cp_list ) < 0.0 && maximum( cp_list ) > 0.0
+  if simtype == 1  || simtype == 3  # power conformity
+    if minimum( cpower_list ) < 0.0 && maximum( cpower_list ) > 0.0
       error("power conformity parameters must either be all nonnegative or all nonpositive")
     end
-    positive_conformity = ( maximum( cp_list ) > 0 )   # Boolean variable
-  elseif isdefined(:acer_C_list)  # Acerbi conformity
-    if minimum( acer_C_list ) < 0.0 && maximum( acer_C_list ) > 0.0
-      error("Acerbi conformity parameters must either be all nonnegative or all nonpositive")
-    end
-    positive_conformity = ( maximum( acer_C_list ) > 0 )   # Boolean variable
+    positive_conformity = (maximum( cprob_list ) > 0.0) && ( maximum( cpower_list ) > 0 )   # Boolean variable
+    negative_conformity = (maximum( acprob_list ) > 0.0) && ( minimum( acpower_list ) < 0 )   # Boolean variable
+  elseif  simtype == 2   # Acerbi conformity
+    positive_conformity = (maximum( cprob_list ) > 0.0)    # Boolean variable
+    negative_conformity = (maximum( acprob_list ) > 0.0)    # Boolean variable
+  else
+    positive_conformity = false
+    negative_conformity = false
   end
   if t2error_sides == 1  
     if positive_conformity
       lo_val = 0.0
       hi_val = 1.0-sig_level
-    else
+    elseif negative_conformity
       lo_val = sig_level
       hi_val = 1.0
+    else
+      error( "t2error_sides should equal 2 for neutral ")
     end
   elseif t2error_sides == 2
     lo_val = sig_level/2.0
@@ -185,12 +223,14 @@ function hyptest( simname )
     p_sig_symbol = names(df)[end]  # assume that the last name is the p_homozygosity symbol
     p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
     println("p_sig_symbol: ",names(df)[end])
-	  hypdf = hyptest_results( df, lo_val, hi_val, c_symbol, p_sig_symbol )
+	  hypdf = hyptest_results( df, multi_value_list_syms, one_value_list_syms, lo_val, hi_val, c_symbol, p_sig_symbol )
   else
-	  hypdf = hyptest_results( df, lo_val, hi_val, c_symbol )
+	  hypdf = hyptest_results( df, multi_value_list_syms, one_value_list_syms, lo_val, hi_val, c_symbol )
   end
   sort!(hypdf,cols=[order(c_symbol,by=abs)])
-	check_zero_first( M, hypdf, c_symbol )
+  println("hypdf:")
+  println(hypdf)
+	#check_zero_first( M, hypdf, c_symbol )
   if sigtest
     #fields = [:s_prob, :se_prob, :we_prob, p_symbol]
     #t2_fields = [:sp_t2err, :sep_t2err, :wep_t2err, :p_sym_t2err ]  #TODO: define these automatically
@@ -204,8 +244,8 @@ function hyptest( simname )
   end
   for j = 1:length(fields)
 	  for i = 1:size(hypdf,1)
-      hypdf[t2_fields[j]][i] = count_field_accept(df, lo_val, hi_val, fields[j], hypdf[c_symbol][i], c_symbol, hypdf[:N][i], hypdf[:N_mu][i] )/Float64(T)
-      #hypdf[t2_fields[j]][i] = count_field_accept(df, lo_2sided, hi_2sided, fields[j], hypdf[c_symbol][i], c_symbol, hypdf[:N][i], hypdf[:N_mu][i] )/Float64(T)
+      hypdf[t2_fields[j]][i] = count_field_accept(df, lo_val, hi_val, fields[j], hypdf[c_symbol][i], c_symbol, hypdf[:n][i], hypdf[:N_mu][i] )/Float64(T)
+      #hypdf[t2_fields[j]][i] = count_field_accept(df, lo_2sided, hi_2sided, fields[j], hypdf[c_symbol][i], c_symbol, hypdf[:n][i], hypdf[:N_mu][i] )/Float64(T)
     end
 	end
   if sigtest

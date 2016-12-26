@@ -8,5 +8,5 @@ const burn_in= 2.0    # generations of burn_in as a multiple of N
 const T     = 10      # Number of trials
 const slat_reps=100000 # Number of reps in ewens_montecarlo
 const sig_level = 0.05   # one-sided
-const t2error_sides = 1
+const t2error_sides = 2
 
