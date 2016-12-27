@@ -57,6 +57,7 @@ const list_symbols = [:n_list, :N_mu_list, :cprob_list, :acprob_list, :cpower_li
       :acer_flag_list, :bottom_list, :topsize_list, :bottomsize_list]
 
 @doc """ function count_field_accept( lo_val::Float64, hi_val::Float64, df, ffield::Symbol, cvalue::Float64, c_symbol::Symbol, N::Int64, N_mu::Float64 )
+  TODO:  Replace c_symbol and cvalue with all of the symbols of multi_value_list_syms
   Given a cvalue, a value of N, and a value of N_mu, count the number of times that the test selected by the ffield.
   If lo_val > 0.0 and hi_val == 1.0, one-sided low.
   If lo_val == 0.0 and hi_val < 1.0, one-sided high.
@@ -210,6 +211,7 @@ function hyptest( simname )
   else
 	  df = readtable("$(simname).csv", makefactors=true, allowcomments=true)
   end
+  # TODO repace this IF statement
   if findfirst(names(df),:cpower) > 0   # power model of conformity
     c_symbol = :cpower
   elseif findfirst(names(df),:acer_C) > 0  # Acerbi model of conformity
@@ -219,6 +221,7 @@ function hyptest( simname )
   else
     error( "file $(simname).csv must contain a column named one of :cpower, :acer_C, or :nn_select ")
   end
+  # TODO:  what is sigtest and p_sig_symbol?
   if sigtest
     p_sig_symbol = names(df)[end]  # assume that the last name is the p_homozygosity symbol
     p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
