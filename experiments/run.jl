@@ -10,14 +10,17 @@ Command-line program to run the simulation.
  See hyptestjl  for analysis of the resulting CSV file.
  Suggested usage:  julia hyptest.jl configs/example1
 =#
-
+#=
 if length(ARGS) == 0
   simname = "../experiments/configs/example0"
 else
   simname = ARGS[1]
 end
+=#
+simname = "../data/12_28_16/n_neutral_N:100_500_N_mu:1_5_mixed_alpha:1.0_theta:0.5"
 
 include("$(simname).jl")
+println("simname: ",simname)
 
 if  simtype == 0   # Neutral---no conformity
   run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, 
@@ -36,7 +39,7 @@ elseif  simtype == 3   # Nearly Neutral Power Conformist
   run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, 
       cprob_list=cprob_list, acprob_list=acprob_list, 
       cpower_list=cpower_list, acpower_list=acpower_list, 
-      dfe=dfe, popsize_multiplier=popsize_multiplier, slat_reps=slat_reps )
+      dfe_list=dfe_list, popsize_multiplier=popsize_multiplier, slat_reps=slat_reps )
 else
   error("illegal simtype")
 end

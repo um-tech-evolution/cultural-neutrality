@@ -116,7 +116,7 @@ function power_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_i
     end
   end
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -171,7 +171,7 @@ function acerbi_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, acer_
     end
   end
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -226,7 +226,7 @@ function acerbi_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, 
     end
   end
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -280,7 +280,7 @@ function bottomlist_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int
     end
   end
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end

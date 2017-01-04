@@ -45,8 +45,7 @@ function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64
     println("a pop_result: ",pop_result)
   end
   if combine
-    println("returning pop_result: ",pop_result)
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -200,6 +199,16 @@ function sample_population( pop::Population, new_size::Int64 )
   end
   indices = rand(1:length(pop),new_size)
   new_pop = [ pop[i] for i in indices ]
+end
+
+@doc """ function sample_population( poplist::Vector{Population}, new_size::Int64 )
+ Take a random sample (with replcement) of size new_size from a population which is the only element of poplist
+"""
+function sample_population( poplist::Vector{Population}, new_size::Int64 )
+  if length(poplist) > 1
+    error("sample population only works on a poplist of length 1")
+  end
+  sample_population( poplist[1], new_size )
 end
 
 @doc """ function combine_pops( poplist::Array{Vector{Int64},1} )

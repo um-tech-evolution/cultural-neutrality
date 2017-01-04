@@ -27,6 +27,7 @@ See the comments for run_simulation for a description of the parameters.
 """
 function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, ngens::Int64, 
     burn_in::Float64, slat_reps::Int64=100000 ) 
+  dfe_params = [:dfe_adv_prob, :dfe_adv_alpha, :dfe_adv_theta, :dfe_disadv_prob, :dfe_disadv_alpha, :dfe_disadv_theta]
   param_strings = [
     "# $(string(Dates.today()))",
     "# trials=$(T)",
@@ -35,8 +36,15 @@ function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}
     "# ngens=$(ngens)",
     "# burn_in=$(burn_in)",
     "# slat_reps=$(slat_reps)",
-    "# popsize_multiplier=$(popsize_multiplier)"
+    "# popsize_multiplier=$(popsize_multiplier)",
+    "# t2error_sides=$(t2error_sides)",
+    "# sig_level=$(sig_level)"
     ]
+  for dp in dfe_params
+    if isdefined(dp)
+      push!(param_strings,"# $(string(dp))=$(eval(dp))")
+    end
+  end
   write(stream, join(param_strings, "\n"), "\n")
   first_heads = ["trial", "n", "N", "N_mu","K"]
   last_heads = vcat([ "s_prob", 
@@ -50,7 +58,7 @@ function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}
   elseif simtype == 2  # Acerbi or toplist/bottomlist conformity
     mid_heads = ["acerflg", "bottom", "cprob", "acprob", "topsz", "bottmsz"]
   elseif simtype == 3  # Power mixed conformity
-    mid_heads = [ "cprob", "acprob", "cpower", "acpower"  ]
+    mid_heads = [ "cprob", "acprob", "cpower", "acpower", "dfe"  ]
   else   
     mid_heads = []
   end
@@ -72,6 +80,7 @@ type trial_result
   bottomsize::Int64
   bottom::Bool
   acerbi_flag::Bool
+  dfe::Function
   s_prob::Float64
   # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
   #se_prob::Float64
@@ -109,7 +118,7 @@ function writerow(stream::IO, simtype::Int64, trial::Int64, tr::trial_result  )
   ]
   if simtype == 0  
     mid = Any[]
-  elseif simtype == 1 || simtype == 3
+  elseif simtype == 1 
     mid = Any[ 
       tr.cprob,
       tr.acprob,
@@ -124,6 +133,14 @@ function writerow(stream::IO, simtype::Int64, trial::Int64, tr::trial_result  )
       tr.acerbi_flag
       tr.topsize
       tr.bottomsize
+    ]
+  elseif simtype == 3
+    mid = Any[ 
+      tr.cprob,
+      tr.acprob,
+      tr.cpower,
+      tr.acpower,
+      tr.dfe
     ]
   end
   line = join( vcat( first, mid, last ), "," )
@@ -173,19 +190,21 @@ function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1
   #ewens_est_K = ewens_K_est( 2*N_mu, N )
   #slatkin_est_K = ewens_K_est( sr.theta_estimate, N )
   #TODO:  include the p_homozygosity parameters in the initialization data
-  #p_1_4 = p_homozygosity( p64, 1.4 )
-  #p_1_6 = p_homozygosity( p64, 1.6 )
-  #p_2_6 = p_homozygosity( p64, 2.6 )
-  #p_3_0 = p_homozygosity( p64, 3.0 )
-  trial_result(N, n, N_mu, length(p64), cprob, acprob, cpower, acpower, topsize, bottomsize, bottom, acerbi_flag, sr.probability, 
+  p_1_4 = p_homozygosity( p64, 1.4 )
+  p_1_6 = p_homozygosity( p64, 1.6 )
+  p_2_6 = p_homozygosity( p64, 2.6 )
+  p_3_0 = p_homozygosity( p64, 3.0 )
+  trial_result(N, n, N_mu, length(p64), cprob, acprob, cpower, acpower, topsize, bottomsize, bottom, acerbi_flag, dfe,
+     sr.probability, 
     # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
     #se_prob, 
     #we_prob, 
-    w_homoz, s_homoz, 
+    w_homoz, s_homoz,
     p_homozygosity( p64, p_homoz_coeffs[1]), 
     p_homozygosity( p64, p_homoz_coeffs[2]), 
     p_homozygosity( p64, p_homoz_coeffs[3]), 
-    p_homozygosity( p64, p_homoz_coeffs[4]) )
+    p_homozygosity( p64, p_homoz_coeffs[4]) 
+  )
 end
 
 type neutral_trial_type
@@ -260,7 +279,7 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
       cpower_list::Vector{Float64}=Float64[], acpower_list::Vector{Float64}=Float64[],
       acer_flag_list::Vector{Bool}=Bool[], bottom_list::Vector{Bool}=Bool[],
       topsize_list::Vector{Int64}=Int64[], bottomsize_list::Vector{Int64}=Int64[],
-      dfe::Function=dfe_neutral )
+      dfe_list::Vector{Function}=Function[dfe_neutral] )
   println("run_simulation")
   for n in n_list
     if n > typemax(ConfigInt)
@@ -322,7 +341,9 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
           for acprob in acprob_list
             for cpower in cpower_list
               for acpower in acpower_list
-                push!(t_list,nn_pconform_trial_type(n,N_mu,cprob,acprob,cpower,acpower,dfe))
+                for dfe in dfe_list
+                  push!(t_list,nn_pconform_trial_type(n,N_mu,cprob,acprob,cpower,acpower,dfe))
+                end
               end
             end
           end
@@ -335,16 +356,16 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
     trial_list = vcat(trial_list,t_list)
   end
   if simtype == 0   # neutral conform
-    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 1   # power conform
-    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
         burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 2  # Acerbi conform
-    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, 
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, 
         acerbi_flag=tr.acerbi_flag, bottom=tr.bottom, topsize=tr.topsize, bottomsize=tr.bottomsize,
         burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   elseif simtype == 3  # Nearly neutral power conformist
-    trial_results = map(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
+    trial_results = pmap(tr->run_trial( tr.n, tr.N_mu, ngens, cprob=tr.cprob, acprob=tr.acprob, cpower=tr.cpower, acpower=tr.acpower, 
         dfe=tr.dfe, burn_in=burn_in, psize_mult=popsize_multiplier, slat_reps=slat_reps ), trial_list )
   end
   trial = 1

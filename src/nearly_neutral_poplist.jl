@@ -22,7 +22,7 @@ Note:  dfe is "distribution of fitness effects" function.
 """
 function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Function; burn_in::Float64=2.0, 
     uniform_start::Bool=false, nnselect::Int64=1, combine::Bool=true )
-  fitness_table = Dict{Int64,Float64}()
+  global fitness_table = Dict{Int64,Float64}()
   int_burn_in = Int(round(N*burn_in))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
@@ -55,7 +55,7 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
     end
   end
   if combine
-    return pop_result
+    return [pop_result]
   else
     return poplist[int_burn_in+1:end]
   end
@@ -69,7 +69,7 @@ function dfe_deleterious( x::Int64; alpha::Float64=0.2, theta::Float64=0.5 )
   return max(0.1,1.0-rand(dist_deleterious))
 end
   
-function dfe_advantageous( x::Int64; alpha::Float64=1.0, theta::Float64=0.01 )
+function dfe_advantageous( x::Int64; alpha::Float64=1.0, theta::Float64=0.5 )
   global dist_advantageous
   if !isdefined(:dist_advantageous)
     dist_advantageous = Distributions.Gamma(alpha,theta)
@@ -81,7 +81,7 @@ end
 Mixed advantageous and deleterious.
 """
 
-function dfe_mixed( x::Int64; adv_probability::Float64=0.2, alpha_disadv::Float64=0.2, alpha_adv::Float64=1.0, theta_disadv::Float64=1.0, theta_adv::Float64=0.01 )
+function dfe_mixed( x::Int64; adv_probability::Float64=0.2, alpha_disadv::Float64=0.2, alpha_adv::Float64=1.0, theta_disadv::Float64=1.0, theta_adv::Float64=0.05 )
   global dist_deleterious
   if !isdefined(:dist_deleterious)
     dist_deleterious = Distributions.Gamma(alpha_disadv,theta_disadv)

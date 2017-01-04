@@ -127,7 +127,7 @@ function run_trials_acerbi_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, 
     burn_in::Float64=2.0, CSVflag::Bool=true  )
   p_counts64 = pop_counts64(sample_population( acerbi_mixed_conformist_poplist(N, N_mu, ngens, 
       conformist_prob, anti_conformist_prob, acerbi_flag=acerbi_flag, toplist_size=toplist_size, 
-      bottomlist_size=bottomlist_size, acerbi_bottomlist=acerbi_bottomlist, burn_in=burn_in ),n))
+      bottomlist_size=bottomlist_size, acerbi_bottomlist=acerbi_bottomlist, burn_in=burn_in ),n*ngens))
   if acerbi_bottomlist
     filename = "$(data_string)acerbi_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_tsize:$(toplist_size)_bsize:$(bottomlist_size)_cprob:$(conformist_prob)_acprob$(anti_conformist_prob).png"
   else
@@ -171,7 +171,7 @@ function run_trials_power_mixed_conformist( n::Int64, N::Int64, N_mu::Float64, n
   p_counts64 = pop_counts64(sample_population(power_mixed_conformist_poplist(N, N_mu, ngens, 
       conformist_prob, anti_conformist_prob, 
       conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
-      burn_in=burn_in ),n))
+      burn_in=burn_in ),n*ngens))
   filename = "$(data_string)power_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob).png"
   ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Power Mixed Conformist", subtitle="cpower=$(conformist_power) cprob=$(conformist_prob) acpower=$(anti_conformist_power) acprob=$(anti_conformist_prob)")
   ptr = pmixed_trial_result(n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, 
@@ -216,9 +216,11 @@ function run_trials_nearly_neutral_power_mixed_conformist( n::Int64, N::Int64, N
   p_counts64 = pop_counts64(sample_population(nearly_neutral_power_mixed_conformist_poplist(N, N_mu, ngens, 
       conformist_prob, anti_conformist_prob, dfe=dfe_funct,
       conformist_power=conformist_power, anti_conformist_power=anti_conformist_power,
-      burn_in=burn_in ),n))
+      burn_in=burn_in ),n*ngens))
   filename = "$(data_string)nn_power_mixed_N:$(N)_N_mu:$(N_mu)_ngens:$(ngens)_cpower:$(conformist_power)_acpower$(anti_conformist_power)_cprob:$(conformist_prob)_acprob:$(anti_conformist_prob)_dfe:$(dfe_str).png"
   println("filename: ",filename)
+  println("p_counts64: ")
+  println(p_counts64)
   ple = power_law_estimates( p_counts64, filename, PNGflag=true, title="Nearly Neutral Power Mixed", subtitle="cpower=$(conformist_power) cprob=$(conformist_prob) acpower=$(anti_conformist_power) acprob=$(anti_conformist_prob)", top_str=dfe_str )
   #ple = power_law_estimates( p_counts64, filename )
   ptr = nn_pmixed_trial_result(n, N, N_mu, ngens, conformist_prob, anti_conformist_prob, 
@@ -276,6 +278,8 @@ function run_trials_nearly_neutral( n::Int64,  N::Int64, N_mu::Float64, ngens::I
   else  # display plot instead of writing plot file
     filename = ""
   end
+  #println("p_counts64: ")
+  #println(p_counts64)
   if bootstrap
     ple = power_law_bootstrap( p_counts64, nthreads=nthreads, nsims=nsims )
   else
