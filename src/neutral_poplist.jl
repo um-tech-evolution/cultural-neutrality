@@ -3,7 +3,8 @@ Simulate the infinite alleles model (which is the Wright-Fisher model with infin
 This is a single locus model.  Haploidy is assumed---which means that genotypes are not in diploid pairs.
 =#
 export neutral_poplist, pop_counts8, pop_counts32,  pop_counts64, poplist_counts32, 
-    poplist_counts64, simple_poplist, ewens_K_est, sample_population, combine_pops, simple_combined_pop
+    poplist_counts64, simple_poplist, ewens_K_est, sample_population, combine_pops, simple_combined_pop,
+    pop_counter
 
 #using DataStructures
 #using DataFrames
@@ -20,29 +21,35 @@ function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64
   int_burn_in = Int(round(N*burn_in))
   mu = N_mu/N
   #println("int_burn_in: ",int_burn_in,"  mu: ",mu)
+  ic = innovation_collection()
   poplist= Population[ collect(1:N) ]
+  for i in poplist[1]
+    push!(ic,innovation(i,1))
+  end
   if combine
     pop_result = Population()
   end
   new_id = N+1
   for g = 2:(ngens+int_burn_in)
-    result = zeros(Int64,N)
+    println("generation: ",g)
+    result = zeros(Int64,N);
     for i = 1:N
       if rand() < mu
         result[i] = new_id
+        push!( ic, innovation( new_id, g-1 ) )   # Not sure why this needs to be g-1, but it does
         new_id += 1
       else  # Choose a random element of the previous population
         result[i] = poplist[g-1][rand(1:N)]
       end
     end
-    push!(poplist,result)
+    Base.push!(poplist,result)
+    pctr = pop_counter( result )
+    update_innovations!( ic, g, N, pctr )
     println("b result: ",result)
-    println("b pop_result: ",pop_result)
     if combine && g >= int_burn_in+1
       pop_result = vcat( pop_result, result )
     end
-    println("a result: ",result)
-    println("a pop_result: ",pop_result)
+    #println("a result: ",result)
   end
   if combine
     return [pop_result]
@@ -140,8 +147,15 @@ function pop_counts32( pop::Population )
   map( x->c[x], sort( unique(pop), by=x->c[x], rev=true ) )
 end
 
-@doc """ function pop_counts64( pop::Population )
+function pop_counter( pop::Population )
+  c = Dict{Int64,Int64}()
+  for x in pop
+    c[x] = get( c, x, 0 ) + 1
+  end
+  c
+end
 
+@doc """ function pop_counts64( pop::Population )
 Returns the sorted frequencies of the alleles of Population pop.
 Example:  If pop = [5, 7, 9, 5, 4, 5, 7], then the returned list is [3, 2, 1, 1]
    because there are 3 5's, 2 7's, 1 9, and 1 4.  So the sum of the returned 
