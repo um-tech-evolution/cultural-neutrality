@@ -48,23 +48,30 @@ Do a neutral infinite sites simulation with popsize N, L loci, mutation rate mu 
     ngens generations, and a burn in time of burn_in*N generations.
 Returns a sim_result_type object, but also prints relevant information.
 """
-function neutral_inf_sites( N::Int64, L::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )
+function neutral_inf_sites( N::Int64, L::Int64, mu::Float64, ngens::Int64; burn_in::Float64=2.0,
+    ic::innovation_collection=innovation_collection(false) )
+  g_limit = 1000
   int_burn_in = Int(round(N*burn_in))
   #global innovation_list = innovation_type[]
-  ic = innovation_collection()
+  #ic = innovation_collection()
+  println("N: ",N)
+  println("N_mu: ",N_mu)
+  println("ngens: ",ngens)
+  if ic.in_use
+    println("fix minimum: ",ic.fix_minimum)
+  end
   #sim_result = sim_result_type( N, L, mu, ngens, 0,0,0,0,0, locus_type[] )
   i = 1
   g = 1
-  g_limit = 1000
   done = false
-  while !done && g < g_limit
-    println("generation: ",g)
+  while !done && g < g_limit+ngens+in_burn_in
+    #println("generation: ",g)
     update_innovations!( ic, g, N )
     #=
     for index in ic.active  # updates sites to the next generation
-      println("innovation: start gen: ",ic.list[index].start_gen,"  history: ",ic.list[index].history)
+      #println("innovation: start gen: ",ic.list[index].start_gen,"  history: ",ic.list[index].history)
       new_allele_freq = update_neutral( index, N, ic.list[index].history[end] )
-      println("new_allele_freq: ",new_allele_freq)
+      #println("new_allele_freq: ",new_allele_freq)
       update!(ic,index,g,new_allele_freq)
       if new_allele_freq == 0  # extinction
         make_extinct!(ic,index,g)
@@ -74,7 +81,7 @@ function neutral_inf_sites( N::Int64, L::Int64, mu::Float64, ngens::Int64, burn_
     end
     =#
     num_mutations = rand(Poisson(mu*L*N))
-    println("g: ",g,"  num_mutations: ",num_mutations)
+    #println("g: ",g,"  num_mutations: ",num_mutations)
     #sim_result.number_mutations += num_mutations
     for j in 1:num_mutations
       push!(ic,innovation(i,g))
@@ -84,12 +91,7 @@ function neutral_inf_sites( N::Int64, L::Int64, mu::Float64, ngens::Int64, burn_
     g += 1
     done = (g > ngens) && length(ic.active) == 0
   end
-  println("number active: ",length(ic.active))
-  println("number fixed: ",length(ic.fixed))
-  println("number extinct: ",length(ic.extinct))
-  println("avg time to fixation: ",average_time_to_fixation(ic))
-  println("avg time to extinction: ",average_time_to_extinction(ic))
-  println("fixed fraction: ",fixed_fraction(ic))
+  print_summary( ic )
   ic
 end
 
@@ -103,7 +105,13 @@ function update_neutral( site::Int64, N::Int64, old_allele_freq::Int64 )
   #println("update_neutral: ",site,"  N: ",N,"  new_allele_freq: ",new_allele_freq)
   return new_allele_freq
 end 
-  
+
+function update_selected( site::Int64, N::Int64, old_allel_freq::Int64, select_coef::Float64 )
+  p = Float64(N-old_allele_freq)/(N+select_coef*old_allele_freq)
+  new_allele_freq = rand(Binomial(N,p))
+  #println("update_neutral: ",site,"  N: ",N,"  new_allele_freq: ",new_allele_freq)
+  return new_allele_freq
+end  
 # Set some values for testing
 n=N=10
 ngens=9

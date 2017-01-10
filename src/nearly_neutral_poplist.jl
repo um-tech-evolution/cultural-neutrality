@@ -21,43 +21,68 @@ end
 Note:  dfe is "distribution of fitness effects" function.  
 """
 function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Function; burn_in::Float64=2.0, 
-    uniform_start::Bool=false, nnselect::Int64=1, combine::Bool=true )
+    uniform_start::Bool=false, nnselect::Int64=1, combine::Bool=true,
+    ic::innovation_collection=innovation_collection(false) )
+  #println("N: ",N)
+  #println("N_mu: ",N_mu)
+  #println("ngens: ",ngens)
+  #if ic.in_use
+  #  println("fix minimum: ",ic.fix_minimum)
+  #end
+  println("dfe: ",dfe)
   global fitness_table = Dict{Int64,Float64}()
+  g_limit = 1000000  # upper limit of generations to wait for extinctions and fixations
   int_burn_in = Int(round(N*burn_in))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
-    dfe_fitness(1, dfe, fitness_table )  # set fitness of 1 to be dfe(1).
+    fit = dfe_fitness(1, dfe, fitness_table )  # set fitness of 1 to be dfe(1).
     new_id = 2
   else
     poplist= Population[ collect(1:N) ]
+    new_id = 1
     for i = 1:N
       # Note that dfe_advantageous(i), dfe_deleterious(i), dfe_mixed(i) do not depend on i, but dfe_mod(i) does depend on i
-      dfe_fitness(i, dfe, fitness_table )  # set fitness of i to be dfe(i). 
+      fit = dfe_fitness(i, dfe, fitness_table )  # set fitness of i to be dfe(i). 
+      new_id += 1
     end
-    new_id = N+1
   end
   if combine
     pop_result = Population()
   end
-  for g = 2:(ngens+int_burn_in)
+  done = false
+  g = 2
+  while !done && g < g_limit+ngens+burn_in
+  #for g = 2:(ngens+int_burn_in)
     for i in 1:N
       if rand() < mu
         poplist[g-1][i] = new_id
-        dfe_fitness( new_id, dfe, fitness_table )  # Set fitness of new_id
+        fit = dfe_fitness( new_id, dfe, fitness_table )  # Set fitness of new_id
+        if g > int_burn_in && g <= ngens+int_burn_in
+          #println("id: ",new_id,"  fit: ",fit)
+          push!( ic, innovation( new_id, g-1, fit ) )   # Not sure why this needs to be g-1, but it does
+        end
         new_id += 1
       end
     end
     new_pop = propsel( poplist[g-1], dfe, fitness_table )
-    push!( poplist, new_pop )
-    if combine && g >= int_burn_in+1
+    Base.push!( poplist, new_pop )
+    if g > int_burn_in
+      pctr = pop_counter( new_pop )
+      update_innovations!( ic, g, N, pctr )
+    end
+    if combine && g >= int_burn_in+1 && g <= ngens+int_burn_in
       pop_result = vcat( pop_result, new_pop )
     end
+    g += 1
+    done = (g > ngens+int_burn_in) && (length(ic.active) == 0)
+    #println("g:",g,"  length(poplist): ",length(poplist))
+    #println("g:",g,"  done: ",done,"  length(ic.active): ",length(ic.active))
   end
   if combine
     return [pop_result]
   else
-    return poplist[int_burn_in+1:end]
+    return poplist[int_burn_in+1:int_burn_in+ngens]
   end
 end
 
@@ -93,11 +118,11 @@ function dfe_mixed( x::Int64; adv_probability::Float64=0.2, alpha_disadv::Float6
   rand() < adv_probability ? 1.0+rand(dist_advantageous) : max(0.01,1.0-rand(dist_deleterious))
 end
 
-@doc """ function dfe_mod( x::Int64; modulus::Int64=5, fit_inc::Float64=1.1 )
+@doc """ function dfe_mod( )
 Increased fitness for every x which is divisible by modulaus.
 The increase in fitness is by a multiple of fit_inc.
 """
-function dfe_mod( x::Int64; modulus::Int64=5, fit_inc::Float64=1.1 )
+function dfe_mod( x::Int64; modulus::Int64=5, fit_inc::Float64=1.2 )
   if x % modulus == 0
 	  return fit_inc
   else
