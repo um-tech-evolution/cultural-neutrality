@@ -31,21 +31,21 @@ function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64
   end
   new_id = N+1
   for g = 2:(ngens+int_burn_in)
-    println("generation: ",g)
+    #println("generation: ",g)
+    pctr = pop_counter( poplist[g-1] )
+    update_innovations!( ic, g, N, pctr )
     result = zeros(Int64,N);
     for i = 1:N
       if rand() < mu
         result[i] = new_id
-        push!( ic, innovation( new_id, g-1 ) )   # Not sure why this needs to be g-1, but it does
+        push!( ic, innovation( new_id, g ) )   
+        #println("new innovation id: ",new_id,"  generation: ",g)
         new_id += 1
       else  # Choose a random element of the previous population
         result[i] = poplist[g-1][rand(1:N)]
       end
     end
     Base.push!(poplist,result)
-    pctr = pop_counter( result )
-    update_innovations!( ic, g, N, pctr )
-    println("b result: ",result)
     if combine && g >= int_burn_in+1
       pop_result = vcat( pop_result, result )
     end
@@ -107,7 +107,7 @@ function neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float6
         result[i] = poplist[g-1][rand(1:previous_popsize)]
       end
     end
-    push!(poplist,result)
+    Base.push!(poplist,result)
     if combine && g >= int_burn_in+1
       pop_result = vcat( pop_result, result )
     end

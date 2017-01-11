@@ -114,6 +114,18 @@ function make_fixed!( innov_collection::innovation_collection, index::Int64, gen
   Base.push!( innov_collection.fixed,index)
 end
 
+function compute_turnovers( pop1::Population, pop2::Population, N_mu::Float64, Ylist::Vector{Int64},
+    Zsum_list::Vector{Int64}, count_list::Vector{Int64} )
+  i = 1
+  for y in Ylist
+    if Float64(y) < 5.0*N_mu
+      Zsum_list[i] += turnover( pop1, pop2, y )
+      count_list[i] += 1
+    end
+    i+= 1
+  end
+end
+
 function print_summary( ic::innovation_collection; print_lists::Bool=false )
   if !ic.in_use 
     return

@@ -53,24 +53,23 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
   done = false
   g = 2
   while !done && g < g_limit+ngens+burn_in
-  #for g = 2:(ngens+int_burn_in)
+    if g > int_burn_in
+      pctr = pop_counter( poplist[g-1] )
+      update_innovations!( ic, g, N, pctr )
+    end
     for i in 1:N
       if rand() < mu
         poplist[g-1][i] = new_id
         fit = dfe_fitness( new_id, dfe, fitness_table )  # Set fitness of new_id
         if g > int_burn_in && g <= ngens+int_burn_in
           #println("id: ",new_id,"  fit: ",fit)
-          push!( ic, innovation( new_id, g-1, fit ) )   # Not sure why this needs to be g-1, but it does
+          push!( ic, innovation( new_id, g, fit ) ) 
         end
         new_id += 1
       end
     end
     new_pop = propsel( poplist[g-1], dfe, fitness_table )
     Base.push!( poplist, new_pop )
-    if g > int_burn_in
-      pctr = pop_counter( new_pop )
-      update_innovations!( ic, g, N, pctr )
-    end
     if combine && g >= int_burn_in+1 && g <= ngens+int_burn_in
       pop_result = vcat( pop_result, new_pop )
     end
