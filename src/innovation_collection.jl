@@ -114,6 +114,7 @@ function make_fixed!( innov_collection::innovation_collection, index::Int64, gen
   Base.push!( innov_collection.fixed,index)
 end
 
+# TODO:  Move to conformist_poplist.jl or delete
 function compute_turnovers( pop1::Population, pop2::Population, N_mu::Float64, Ylist::Vector{Int64},
     Zsum_list::Vector{Int64}, count_list::Vector{Int64} )
   i = 1
@@ -143,6 +144,7 @@ function print_summary( ic::innovation_collection; print_lists::Bool=false )
   println("avg time to extinction: ",average_time_to_extinction(ic))
   println("avg fitness fixed: ",average_fitness_fixed(ic))
   println("avg fitness extinct: ",average_fitness_extinct(ic))
+  println("avg fitness all: ",average_fitness_all(ic))
 end
 
 function average_time_to_extinction( innov_collection::innovation_collection )
@@ -212,6 +214,23 @@ function average_fitness_extinct( ic::innovation_collection )
     sum += ic.list[i].selection_coefficient
   end
   return sum/length(ic.extinct)
+end
+
+function average_fitness_all( ic::innovation_collection )
+  if !ic.in_use 
+    return 0.0
+  end
+  if  length(ic.extinct) == 0
+    return -1.0
+  end
+  sum = 0.0
+  for i in ic.extinct 
+    sum += ic.list[i].selection_coefficient
+  end
+  for i in ic.fixed 
+    sum += ic.list[i].selection_coefficient
+  end
+  return sum/(length(ic.extinct) + length(ic.fixed))
 end
 
 

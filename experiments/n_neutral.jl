@@ -41,12 +41,13 @@ type trial_result
   fixation_time::Float64
   average_fitness_fixed::Float64
   average_fitness_extinct::Float64
+  average_fitness_all::Float64
 end
 
 # Constructor that sets the parameters
 function trial_result( nn_symtype::Int64, N::Int64, N_mu::Float64, L::Int64, ngens::Int64, 
     fix_minimum::Float64, burn_in::Float64, dfe::Function, dfe_str::AbstractString )
-  trial_result( nn_simtype, N, N_mu, L, ngens, burn_in, fix_minimum, dfe, dfe_str, 0, 0, 0, 0.0, 0.0, 0.0, 0.0 )
+  trial_result( nn_simtype, N, N_mu, L, ngens, burn_in, fix_minimum, dfe, dfe_str, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0 )
 end
 
 function print_trial_result( tr::trial_result )
@@ -70,6 +71,7 @@ function print_trial_result( tr::trial_result )
   println("fixation_time: ", tr.fixation_time)
   println("average_fitness_fixed: ", tr.average_fitness_fixed)
   println("average_fitness_extinct: ", tr.average_fitness_extinct)
+  println("average_fitness_all: ", tr.average_fitness_all)
 end
 
 # Convert an innovation_oollection to a trial_result
@@ -83,6 +85,7 @@ function convert_to_trial_result( ic::innovation_collection, tr::trial_result )
   tr.fixation_time = average_time_to_fixation( ic )
   tr.average_fitness_fixed = average_fitness_fixed( ic::innovation_collection )
   tr.average_fitness_extinct = average_fitness_extinct( ic::innovation_collection )
+  tr.average_fitness_all = average_fitness_all( ic::innovation_collection )
 end
 
 function run_trials()
@@ -145,7 +148,8 @@ function writeheader(stream::IO, N_list::Vector{Int64}, N_mu_list::Vector{Float6
     "ave_extinct_time", 
     "ave_fixed_time", 
     "ave_extinct_selcoef", 
-    "ave_fixed_selcoef"] 
+    "ave_fixed_selcoef", 
+    "ave_all_selcoef"] 
   #=
   if tr.nn_simtype == 0  # Neutral
     mid_heads = []
@@ -176,7 +180,8 @@ function writerow(stream::IO, trial::Int64, tr::trial_result  )
       tr.extinction_time,
       tr.fixation_time,
       tr.average_fitness_extinct,
-      tr.average_fitness_fixed
+      tr.average_fitness_fixed,
+      tr.average_fitness_all
     ]
   end
   line = join( vcat( first, mid ), "," )
