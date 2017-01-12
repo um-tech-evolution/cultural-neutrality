@@ -4,6 +4,8 @@ include("../src/NeutralCulturalEvolution.jl")
 #include("../src/conformist_poplist.jl")
 #include("../src/freq_scaled_fitness.jl")
 include("../experiments/mixed_conformist.jl")
+include("../src/innovation.jl")
+include("../src/innovation_collection.jl")
 context("run_trials.jl") do
   n = N = 250; N_mu = 2.0; ngens = 1000; burn_in = 2.0;
   context("run_trials_power_mixed_conformist()") do

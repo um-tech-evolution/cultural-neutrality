@@ -24,7 +24,7 @@ function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64
   ic = innovation_collection()
   poplist= Population[ collect(1:N) ]
   for i in poplist[1]
-    push!(ic,innovation(i,1))
+    ic_push!(ic,innovation(i,1))
   end
   if combine
     pop_result = Population()
@@ -38,7 +38,7 @@ function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64
     for i = 1:N
       if rand() < mu
         result[i] = new_id
-        push!( ic, innovation( new_id, g ) )   
+        ic_push!( ic, innovation( new_id, g ) )   
         #println("new innovation id: ",new_id,"  generation: ",g)
         new_id += 1
       else  # Choose a random element of the previous population

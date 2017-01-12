@@ -114,8 +114,8 @@ end
   T = number of trails
   s = sel coeff
   alt = true means use propsel_alt as a check of correctness of propsel
-  fixed = true  means sel coeff of different individual is s
-  fixed = false  means sel coeff of different individual is 1.0 + s/N
+  fixed = true  means sel coeff of different individual is s and the fitness is 1.0+s
+  fixed = false  means sel coeff of the different individual is s/N and the fitness is 1+s/N.
 
 Example run:
 julia> run_trials(128,1,10000,2.)
@@ -128,12 +128,12 @@ function run_trials( N::Int64, k::Int64, T::Int64, s::Float64=0.0, alt::Bool=fal
   ngens = 100*N
   function dfe_s(x)
     if x == 2
-      return  fixed ? s : 1.0+s/N
+      return  fixed ? 1.0+s : 1.0+s/N
     else
       return 1.0
     end
   end
-  println("sel coefs: 1: ",dfe_s(1)," 2: ",dfe_s(2))
+  println("fitnesses: 1: ",dfe_s(1)," 2: ",dfe_s(2))
   count_1 = 0
   count_2 = 0
   gens_1 = 0

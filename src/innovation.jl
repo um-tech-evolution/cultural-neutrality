@@ -2,7 +2,9 @@
 If Julia was object-oriented, this would the the class defintion for class innovation.
 Code for an innovation class that stores an innovation (mutation).
 =#
+export innovation_type, innovation,  iupdate!, make_extinct!,  make_fixed!
 using Base.Test
+
 
 type innovation_type
   identifier::Int64   # integer for this innovation, not sure if this is needed
@@ -19,7 +21,7 @@ function innovation( id::Int64, start_gen::Int64, selection_coef::Float64=1.0 )
   return innovation_type( id, start_gen, 0, selection_coef, Int64[1] )
 end
 
-function update!( innov::innovation_type, generation::Int64, new_allele_freq::Int64 )
+function iupdate!( innov::innovation_type, generation::Int64, new_allele_freq::Int64 )
   #println("inn update! index: ",innov.identifier,"  gen: ",generation,"  len(hist): ",length(innov.history), "  start_gen: ",innov.start_gen)
   @test generation == length(innov.history) + innov.start_gen 
   Base.push!( innov.history, new_allele_freq )

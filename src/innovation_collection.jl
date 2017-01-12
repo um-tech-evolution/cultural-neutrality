@@ -4,6 +4,10 @@ Stores a collection of innovations.
 Innovations are partitioned into 3 subsets, active, fixed, and extinct.
 =#
 
+export innovation_collection, ic_push!, update_innovations!, ic_update!, make_extinct!, 
+    make_fixed!, print_summary, average_time_to_extinction, average_time_to_fixation, 
+    fixed_fraction, average_fitness_fixed, average_fitness_extinct, average_fitness_all, fix_test
+
 type innovation_collection
   list::Dict{Int64,innovation_type} #    Stores a collection of innovations
   active::IntSet   # indices of actively evolving innovations
@@ -23,10 +27,10 @@ function innovation_collection( fix_min::Float64, in_use::Bool=true )
   innovation_collection( Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), fix_min, in_use )
 end
 
-@doc """ push!()
+@doc """ ic_push!()
  Adds an innovation to the collection.
 """
-function push!( innov_collection::innovation_collection, innov::innovation_type )
+function ic_push!( innov_collection::innovation_collection, innov::innovation_type )
   if !innov_collection.in_use 
     return
   end
@@ -58,7 +62,7 @@ function update_innovations!( ic::innovation_collection, g::Int64, N::Int64, fix
     #println("innovation: start gen: ",ic.list[index].start_gen,"  history: ",ic.list[index].history)
     new_allele_freq = update_neutral( index, N, ic.list[index].history[end] )
     #println("new_allele_freq: ",new_allele_freq)
-    update!(ic,index,g,new_allele_freq)
+    ic_update!(ic,index,g,new_allele_freq)
     if new_allele_freq == 0  # extinction
       make_extinct!(ic,index,g)
     elseif new_allele_freq >= Int(ceil(ic.fix_minimum*N))  # fixation
@@ -77,7 +81,7 @@ function update_innovations!( ic::innovation_collection, g::Int64, N::Int64, pop
   for index in ic.active  # updates sites to the next generation
     #println("update_innovations! index: ",index)
     new_allele_freq = get( popcounter, index, 0 )
-    update!(ic,index,g,new_allele_freq)
+    ic_update!(ic,index,g,new_allele_freq)
     if new_allele_freq == 0  # extinction
       make_extinct!(ic,index,g)
     elseif new_allele_freq >= Int(ceil(ic.fix_minimum*N) )  # fixation
@@ -86,14 +90,14 @@ function update_innovations!( ic::innovation_collection, g::Int64, N::Int64, pop
   end
 end  
 
-# Calls the update! function of innovation on innov_collection.list[index]
-function update!( innov_collection::innovation_collection, index::Int64, generation::Int64, new_allele_freq::Int64 )
+# Calls the iupdate! function of innovation on innov_collection.list[index]
+function ic_update!( innov_collection::innovation_collection, index::Int64, generation::Int64, new_allele_freq::Int64 )
   if !innov_collection.in_use 
     return
   end
   #println("i_c update! new_allele_freq: ",new_allele_freq)
   #@test generation == length(innov_collection.list[index].history) + innov_collection.list[index].start_gen
-  update!( innov_collection.list[index], generation, new_allele_freq )
+  iupdate!( innov_collection.list[index], generation, new_allele_freq )
 end
 
 function make_extinct!( innov_collection::innovation_collection, index::Int64, generation::Int64 )
@@ -233,81 +237,3 @@ function average_fitness_all( ic::innovation_collection )
   return sum/(length(ic.extinct) + length(ic.fixed))
 end
 
-
-# TODO:  move to test directory
-# A "sanity test" for innovation.jl and innovation_collection.jl
-function test()
-  ic = innovation_collection()
-  # Create 2 innovations on generation 1
-  push!(ic,innovation(1,1))
-  push!(ic,innovation(2,1))
-  # Updates for generation 2
-  update!(ic,1,2,4)
-  update!(ic,2,2,5)
-  # Create 1 innovation on generation 2
-  push!(ic,innovation(3,2))
-  # Make 1 extinct and 2 fixed on generation 3
-  update!(ic,1,3,0)
-  make_extinct!(ic,1,3)
-  update!(ic,2,3,8)
-  make_fixed!(ic,2,3)
-  # Update 3 on generation 3
-  update!(ic,3,3,4)
-  # Update 3 on generation 4
-  update!(ic,3,4,8)
-  make_fixed!(ic,3,4)
-  print_summary( ic, print_lists=true )
-  return ic
-end
-
-# TODO:  move to test directory
-# Tests some of the functionality of  innovation.jl and innovation_collection.jl
-function testall( N::Int64, ngens::Int64, mu::Float64; prob_ext::Float64=0.3, prob_fix::Float64=0.2 )
-  ic = innovation_collection()
-  i = 1
-  g = 1
-  g_limit = 1000
-  done = false
-  while !done && g < g_limit
-    println("generation: ",g)
-    for index in ic.active
-      r = rand()
-      ac = rand(1:N)
-      println("updating ",index,"  id:",ic.list[index].identifier)
-      update!(ic,index,g,ac)
-      if r < prob_ext
-        println("extincting ",index,"  id:",ic.list[index].identifier)
-        make_extinct!(ic,index,g)
-      elseif r < prob_ext+prob_fix
-        println("fixing ",index,"  id:",ic.list[index].identifier)
-        make_fixed!(ic,index,g)
-      end
-    end
-    if g <= ngens
-      for j = 1:N
-        r = rand()
-        if r < mu
-          println("generating innovation ",i)
-          push!(ic,innovation(i,g))
-          i += 1
-        end
-      end
-    end
-    g += 1
-    if g == ngens
-      println("active: ",ic.active)
-    end
-    done = (g > ngens) && length(ic.active) == 0
-  end
-  print_summary( ic, print_lists=true )
-  ic
-end
-
-function testall()
-  testall(N,ngens,mu)
-end
-
-#=
-include("innovation.jl")
-include("innovation_collection.jl")
-=#

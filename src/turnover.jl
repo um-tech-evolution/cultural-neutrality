@@ -1,6 +1,6 @@
 using DataStructures
 
-export topKlist, bottomKlist, topKset, bottomKset, turnover, turnover_lists
+export topKlist, bottomKlist, topKset, bottomKset, turnover, turnover_lists,
     add_to_turnover_lists, turnover_lists_to_dataframe
 
 @doc """ function topKlist( pop::Population, K::Int64 )
@@ -13,7 +13,7 @@ function topKlist( pop::Population, K::Int64 )
     Base.push!(c,x)
   end
   result = unique(sort( pop, by=x->c[x], rev=true ))
-  return result[1:K]
+  return result[1:min(K,length(result))]
   #=
   j = K
   max = c[result[K]]
@@ -34,7 +34,7 @@ function bottomKlist( pop::Population, K::Int64 )
     Base.push!(c,x)
   end
   result = unique(sort( pop, by=x->c[x] ))
-  return result[1:K]
+  return result[1:min(K,length(result))]
   #=
   If there are more than K of these, return the list of all of them.
   j = K
@@ -144,8 +144,8 @@ function add_to_turnover_lists( tl::Vector{Any}, Ylist::Vector{Int64}, Zlists::V
     end
   end
   for i = 1:len
-    mean_lst[i] /= count_lst[i]
-    var_lst[i] = (sqr_lst[i]-count_lst[i]*mean_lst[i]^2)/(count_lst[i]-1.0)
+    z_lst[i] /= count_lst[i]
+    var_lst[i] = (sqr_lst[i]-count_lst[i]*z_lst[i]^2)/(count_lst[i]-1.0)
   end
   tl[1] = vcat(tl[1],N_lst)
   tl[2] = vcat(tl[2],mu_lst)
@@ -170,3 +170,20 @@ function turnover_lists_to_dataframe( tl::Vector{Any} )
     z=tl[5],
     var=tl[6])
 end
+
+# Combines the above functions into one function
+# Works as of 1/12/17
+function neutral_turnover_dataframe( N::Int64, N_mu::Float64, ngens::Int64, Ylist )
+  sort!(Ylist)
+  spl = simple_poplist(N,N_mu,ngens,combine=false)
+  zl =turnover( spl, Ylist, N_mu )
+  if length(zl[1]) < length(Ylist)
+    Ylist = Ylist[1:length(zl[1])]
+  end
+  tl = turnover_lists()
+  add_to_turnover_lists(tl,Ylist,zl,N,N_mu/N)
+  turnover_lists_to_dataframe( tl )
+end
+
+  
+
