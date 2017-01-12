@@ -136,12 +136,12 @@ function add_to_turnover_lists( tl::Vector{Any}, Ylist::Vector{Int64}, Zlists::V
   N_lst = Int64[ N for i in 1:len ]
   mu_lst = Float64[ mu for i in 1:len ]
   count_lst = [length(Zlists) for i in 1:len ]
-  mean_lst = zeros(Float64,len)
+  z_lst = zeros(Float64,len)
   sqr_lst = zeros(Float64,len)
   var_lst = zeros(Float64,len)
   for j = 1:length(Zlists)
     for i = 1:len
-      mean_lst[i] += Zlists[j][i]
+      z_lst[i] += Zlists[j][i]
       sqr_lst[i] += Zlists[j][i]^2
     end
   end
@@ -153,18 +153,23 @@ function add_to_turnover_lists( tl::Vector{Any}, Ylist::Vector{Int64}, Zlists::V
   tl[2] = vcat(tl[2],mu_lst)
   tl[3] = vcat(tl[3],Ylist)
   tl[4] = vcat(tl[4],count_lst)
-  tl[5] = vcat(tl[5],mean_lst)
+  tl[5] = vcat(tl[5],z_lst)
   tl[6] = vcat(tl[6],var_lst)
   tl
 end
 
 function turnover_lists_to_dataframe( tl::Vector{Any} )
+  a = 0.55
+  b = 0.86
+  c = 0.13
+  d = 1.38
   DataFrame(
     N=tl[1],
     mu=tl[2],
     y=tl[3],
+    x=[d*tl[2][i]^a*tl[3][i]^b*tl[1][i]^c for i = 1:length(tl[1])],
     count=tl[4],
-    mean=tl[5],
+    z=tl[5],
     var=tl[6])
 end
 

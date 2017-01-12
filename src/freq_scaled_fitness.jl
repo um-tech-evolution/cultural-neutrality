@@ -148,3 +148,40 @@ function propsel!( pop::Population, dfe::Function, fitness_table::Dict{Int64,Flo
   end
   pop[:] = [ pop[selected[i]] for i = 1:n ]
 end
+
+@doc """ function propsel_alt()
+  Roulette wheel version of proportial selection
+  Less efficient in almost all circumstances than the above version.
+  Written as check of correctness for the above version
+"""
+function propsel_alt( pop::Population, dfe::Function)
+  fitness_table = Dict{Int64,Float64}()
+  N = length(pop)
+  new_pop = zeros(Int64,N)
+  fitdict = Dict{Int64,Float64}()
+  popctr = pop_counter( pop )
+  for p in pop
+    fit = dfe_fitness(p, dfe, fitness_table )  # set fitness of p to be dfe(p).
+  end
+  sum_fitness = 0.0
+  for p in keys(popctr)
+    dfit = dfe_fitness( p, dfe, fitness_table )*popctr[p]
+    sum_fitness += dfit
+  end
+  for p in keys(popctr)
+    fitdict[p] = dfe_fitness( p, dfe, fitness_table )*popctr[p]/sum_fitness
+  end
+  for i = 1:N
+    r = rand()
+    sumfit = 0.0
+    for p in keys(fitdict)
+      sumfit += fitdict[p]
+      if r < sumfit
+        new_pop[i] = p
+        break
+      end
+    end
+  end
+  new_pop
+end
+
