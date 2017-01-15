@@ -101,6 +101,7 @@ function run_trials()
   for N_mu in N_mu_list
     for N in N_list
       tr = trial_result( nn_simtype, N, N_mu, L, ngens, fix_minimum, burn_in, dfe, dfe_str )
+      run_trial( tr )
       writerow(stream, trial, tr )
       trial += 1
     end
@@ -112,7 +113,7 @@ function run_trial( tr::trial_result )
     ic = innovation_collection( tr.fix_minimum )
     poplist = nearly_neutral_poplist(tr.N,tr.N_mu,tr.ngens,tr.dfe,combine=false,ic=ic)
     convert_to_trial_result( ic, tr )
-    add_stats_to_trial_result( tr, poplist )
+    add_stats_to_trial_result!( tr, poplist )
     print_trial_result( tr )
     return tr
   else
@@ -201,10 +202,13 @@ function writerow(stream::IO, trial::Int64, tr::trial_result  )
 end
 
 
+  run_trials()
+#=
 try
   run_trials()
   close(stream)
 except
   close(stream)
 end
+=#
 
