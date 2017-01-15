@@ -1,7 +1,9 @@
 using DataStructures
+using DataFrames
 
 export topKlist, bottomKlist, topKset, bottomKset, turnover, turnover_lists,
-    add_to_turnover_lists, turnover_lists_to_dataframe
+    add_to_turnover_lists, turnover_lists_to_dataframe, neutral_turnover_dataframe,
+    nearly_neutral_turnover_to_csv, neutral_turnover_to_csv
 
 @doc """ function topKlist( pop::Population, K::Int64 )
 Return the list of the K most frequent elements of pop.
@@ -86,11 +88,14 @@ function turnover( poplst::Vector{Population}, Ylist::Vector{Int64}, N_mu::Float
     # Remove elements from Ylist that do not satisfy Evans and Giometto's condition that
     #   y < N_mu/0.15 which is implemented conservatively.
     i = length(Ylist)  
-    if Float64(Ylist[i]) > 5.0*N_mu
+    if i > 0 && Float64(Ylist[i]) > 5.0*N_mu
       deleteat!( Ylist, i )
     end
   end 
   Zlists = Vector{Int64}[]
+  if length(Ylist) == 0
+    return Zlists
+  end
   c_prev = DataStructures.counter(Int64)
   for x in poplst[1]
     Base.push!(c_prev,x)
@@ -124,12 +129,13 @@ function turnover_lists()
     Int64[],    # list of y values
     Int64[],    # list of counts
     Float64[],  # list of means
-    Float64[]   # list of variances
+    Float64[],  # list of variances
+    Int64[]     # list of codes for plot colors or symbols
   ]
 end
 
 function add_to_turnover_lists( tl::Vector{Any}, Ylist::Vector{Int64}, Zlists::Vector{Vector{Int64}}, N::Int64,
-    mu::Float64 )
+    mu::Float64, code )
   len = length(Ylist)
   N_lst = Int64[ N for i in 1:len ]
   mu_lst = Float64[ mu for i in 1:len ]
@@ -137,6 +143,7 @@ function add_to_turnover_lists( tl::Vector{Any}, Ylist::Vector{Int64}, Zlists::V
   z_lst = zeros(Float64,len)
   sqr_lst = zeros(Float64,len)
   var_lst = zeros(Float64,len)
+  code_lst = [code for i in 1:len ]
   for j = 1:length(Zlists)
     for i = 1:len
       z_lst[i] += Zlists[j][i]
@@ -153,6 +160,7 @@ function add_to_turnover_lists( tl::Vector{Any}, Ylist::Vector{Int64}, Zlists::V
   tl[4] = vcat(tl[4],count_lst)
   tl[5] = vcat(tl[5],z_lst)
   tl[6] = vcat(tl[6],var_lst)
+  tl[7] = vcat(tl[7],code_lst)
   tl
 end
 
@@ -168,22 +176,86 @@ function turnover_lists_to_dataframe( tl::Vector{Any} )
     x=[d*tl[2][i]^a*tl[3][i]^b*tl[1][i]^c for i = 1:length(tl[1])],
     count=tl[4],
     z=tl[5],
-    var=tl[6])
+    var=tl[6],
+    code=tl[7])
 end
 
 # Combines the above functions into one function
-# Works as of 1/12/17
-function neutral_turnover_dataframe( N::Int64, N_mu::Float64, ngens::Int64, Ylist )
+function neutral_turnover_dataframe( N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, Ylist::Vector{Int64} )
   sort!(Ylist)
-  spl = simple_poplist(N,N_mu,ngens,combine=false)
-  zl =turnover( spl, Ylist, N_mu )
-  if length(zl[1]) < length(Ylist)
-    Ylist = Ylist[1:length(zl[1])]
-  end
   tl = turnover_lists()
-  add_to_turnover_lists(tl,Ylist,zl,N,N_mu/N)
+  for N in N_list
+    println("N: ",N)
+    for mu in mu_list
+      N_mu = N*mu
+      println("N_mu: ",N_mu)
+      spl = simple_poplist(N,N_mu,ngens,combine=false)
+      #println("length spl: ",length(spl))
+      Ylist_tmp = deepcopy(Ylist)
+      zl =turnover( spl, Ylist_tmp, N_mu )
+      println("length zl: ",length(zl),"  Ylist: ",Ylist_tmp)
+      if length(zl[1]) < length(Ylist_tmp)
+        Ylist_tmp = Ylist_tmp[1:length(zl[1])]
+      end
+      add_to_turnover_lists(tl,Ylist_tmp,zl,N,mu)
+      println("length tl[1]: ",length(tl[1]))
+    end
+  end
   turnover_lists_to_dataframe( tl )
 end
 
+# Does both nearly neutral and neutral
+function nearly_neutral_turnover_dataframe( N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, 
+    Ylist::Vector{Int64}, dfe::Function )
+  sort!(Ylist)
+  tl = turnover_lists()
+  code = 0    # used to generate colors or plot symbols in plot
+  for N in N_list
+    println("N: ",N)
+    for mu in mu_list
+      N_mu = N*mu
+      println("N_mu: ",N_mu)
+      #  Do nearly neutral
+      spl = nearly_neutral_poplist(N,N_mu,ngens,dfe,combine=false)
+      Ylist_tmp = deepcopy(Ylist)
+      zl =turnover( spl, Ylist_tmp, N_mu )
+      if length(zl[1]) < length(Ylist_tmp)
+        Ylist_tmp = Ylist_tmp[1:length(zl[1])]
+      end
+      code += 1
+      add_to_turnover_lists(tl,Ylist_tmp,zl,N,mu,code)
+      #  Do neutral
+      spl = simple_poplist(N,N_mu,ngens,combine=false)
+      #println("length spl: ",length(spl))
+      Ylist_tmp = deepcopy(Ylist)
+      zl =turnover( spl, Ylist_tmp, N_mu )
+      println("length zl: ",length(zl),"  Ylist: ",Ylist_tmp)
+      if length(zl[1]) < length(Ylist_tmp)
+        Ylist_tmp = Ylist_tmp[1:length(zl[1])]
+      end
+      code += 1
+      add_to_turnover_lists(tl,Ylist_tmp,zl,N,mu,code)
+    end
+  end
+  turnover_lists_to_dataframe( tl )
+end
+
+function neutral_turnover_to_csv( filename::String, N_list::Vector{Int64}, mu_list::Vector{Float64}, ngens::Int64, Ylist )
+  hl = ["neutral","N_list: $(N_list)","mu_list: $(mu_list)","ylist: $(ylist)","ngens: $(ngens)"]
+  ndf = neutral_turnover_dataframe(N_list,mu_list,ngens,ylist)
+  open(filename,"w") do f
+    write_data_frame(f,hl,ndf)
+  end
+end
+
+# Does both nearly neutral and neutral
+function nearly_neutral_turnover_to_csv( filename::String, N_list::Vector{Int64}, mu_list::Vector{Float64}, 
+    dfe::Function, ngens::Int64, ylist::Vector{Int64} )
+  hl = ["nearly neutral dfe: $(dfe)","N_list: $(N_list)","mu_list: $(mu_list)","ylist: $(ylist)","ngens: $(ngens)"]
+  ndf = nearly_neutral_turnover_dataframe(N_list,mu_list,ngens,ylist,dfe)
+  open(filename,"w") do f
+    write_data_frame(f,hl,ndf)
+  end
+end
   
 

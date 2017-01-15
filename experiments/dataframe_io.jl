@@ -1,7 +1,8 @@
 using DataFrames
+export read_header_lines, write_data_frame, write_dataframe, read_headers
 
 function read_header_lines( stream::IO )
-  result = AbstractString[]
+  result = String[]
   line = readline( stream )
   while line[1] == '#'
     push!( result, line )
@@ -10,15 +11,11 @@ function read_header_lines( stream::IO )
   result
 end
 
-function add_quotes( string_array::Array{AbstractString,1} )
+function add_quotes( string_array::Array{String,1} )
   map(n->"\"$n\"",string_array)
 end
 
-function add_quotes( string_array::Array{ASCIIString,1} )
-  map(n->"\"$n\"",string_array)
-end
-
-function write_data_frame( stream::IO, header_lines::Vector{AbstractString}, df::DataFrame )
+function write_data_frame( stream::IO, header_lines::Vector{String}, df::DataFrame )
   for h in header_lines
     if h[1] == '#' && h[end] == '\n'
       write(stream, h )
@@ -30,15 +27,16 @@ function write_data_frame( stream::IO, header_lines::Vector{AbstractString}, df:
   for i = 1:size(df)[1]
     write(stream, join( Any[ df[j][i] for j = 1:size(df)[2]], "," ), "\n" )
   end
+  close(stream)
 end
   
-function write_dataframe( filename::AbstractString, header_lines::Vector{AbstractString}, df::DataFrame )
+function write_dataframe( filename::String, header_lines::Vector{String}, df::DataFrame )
   str = open(filename,"w")
   write_data_frame( str, header_lines, df )
   close(str)
 end
 
-function read_headers( filename::AbstractString)
+function read_headers( filename::String)
   str = open(filename,"r")
   header_lines = read_header_lines( str )
   close(str)

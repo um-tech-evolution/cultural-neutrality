@@ -32,7 +32,7 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
   println("dfe: ",dfe)
   global fitness_table = Dict{Int64,Float64}()
   g_limit = 1000000  # upper limit of generations to wait for extinctions and fixations
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
@@ -63,7 +63,7 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
         fit = dfe_fitness( new_id, dfe, fitness_table )  # Set fitness of new_id
         if g > int_burn_in && g <= ngens+int_burn_in
           #println("id: ",new_id,"  fit: ",fit)
-          push!( ic, innovation( new_id, g, fit ) ) 
+          ic_push!( ic, innovation( new_id, g, fit ) ) 
         end
         new_id += 1
       end

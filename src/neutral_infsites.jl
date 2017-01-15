@@ -45,13 +45,13 @@ end
 
 @doc """ function neutral_inf_sites( N::Int64, L::Int64, mu::Float64, ngens::Int64, burn_in::Float64 )
 Do a neutral infinite sites simulation with popsize N, L loci, mutation rate mu per locus,
-    ngens generations, and a burn in time of burn_in*N generations.
+    ngens generations, and a burn in time of burn_in*N/N_mu+50 generations.
 Returns a sim_result_type object, but also prints relevant information.
 """
 function neutral_inf_sites( N::Int64, L::Int64, mu::Float64, ngens::Int64; burn_in::Float64=2.0,
     ic::innovation_collection=innovation_collection(false) )
   g_limit = 1000
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   #global innovation_list = innovation_type[]
   #ic = innovation_collection()
   println("N: ",N)

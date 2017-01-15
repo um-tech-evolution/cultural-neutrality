@@ -1,14 +1,18 @@
+include("../src/NeutralCulturalEvolution.jl")
+#=
 include("../src/aliases.jl")
 include("../src/freq_scaled_fitness.jl")
 include("../src/neutral_poplist.jl")
 include("../src/innovation.jl")
 include("../src/innovation_collection.jl")
 include("../src/nearly_neutral_poplist.jl")
+=#
 if length(ARGS) == 0
   simname = "../experiments/nn_configs/nn_example1"
 else
   simname = ARGS[1]
 end
+println("simname: ",simname)
 include("$(simname).jl")
 println("simname: ",simname)
 stream = open("$(simname).csv","w")
@@ -34,6 +38,7 @@ type trial_result
   fix_minimum::Float64
   dfe::Function
   dfe_str::AbstractString
+  average_richness::Float64   # Average number of traits in populations
   number_active::Int64
   number_extinctions::Int64
   number_fixations::Int64
@@ -47,7 +52,7 @@ end
 # Constructor that sets the parameters
 function trial_result( nn_symtype::Int64, N::Int64, N_mu::Float64, L::Int64, ngens::Int64, 
     fix_minimum::Float64, burn_in::Float64, dfe::Function, dfe_str::AbstractString )
-  trial_result( nn_simtype, N, N_mu, L, ngens, burn_in, fix_minimum, dfe, dfe_str, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0 )
+  trial_result( nn_simtype, N, N_mu, L, ngens, burn_in, fix_minimum, dfe, dfe_str, 0.0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0 )
 end
 
 function print_trial_result( tr::trial_result )
@@ -64,6 +69,7 @@ function print_trial_result( tr::trial_result )
   println("fix_minimum: ", tr.fix_minimum)
   println("dfe: ", tr.dfe)
   println("dfe_str: ", tr.dfe_str)
+  println("average richness: ",tr.average_richness)
   println("number_active: ", tr.number_active)
   println("number_extinctions: ", tr.number_extinctions)
   println("number_fixations: ", tr.number_fixations)
@@ -95,7 +101,6 @@ function run_trials()
   for N_mu in N_mu_list
     for N in N_list
       tr = trial_result( nn_simtype, N, N_mu, L, ngens, fix_minimum, burn_in, dfe, dfe_str )
-      run_trial( tr )
       writerow(stream, trial, tr )
       trial += 1
     end
@@ -107,11 +112,16 @@ function run_trial( tr::trial_result )
     ic = innovation_collection( tr.fix_minimum )
     poplist = nearly_neutral_poplist(tr.N,tr.N_mu,tr.ngens,tr.dfe,combine=false,ic=ic)
     convert_to_trial_result( ic, tr )
+    add_stats_to_trial_result( tr, poplist )
     print_trial_result( tr )
     return tr
   else
     println("nn_simtype ",nn_simtype," not implemented")
   end
+end
+
+function add_stats_to_trial_result!( tr::trial_result, poplist::Vector{Population} )
+  tr.average_richness = mean(map(x->length(pop_counts64(x)),poplist))
 end
 
 @doc """ function writeheader()
@@ -142,7 +152,8 @@ function writeheader(stream::IO, N_list::Vector{Int64}, N_mu_list::Vector{Float6
   first_heads = ["trial", "N", "N_mu","ngens"]
   mid_heads = []
   last_heads =
-  [ "num_extinct", 
+  [ "average_richness",
+    "num_extinct", 
     "num_fixed", 
     "fraction_fixed",
     "ave_extinct_time", 
@@ -174,6 +185,7 @@ function writerow(stream::IO, trial::Int64, tr::trial_result  )
     mid = Any[]
   elseif tr.nn_simtype == 1
     mid = Any[
+      tr.average_richness,
       tr.number_extinctions,
       tr.number_fixations,
       Float64(tr.number_fixations)/(tr.number_extinctions+tr.number_fixations),
@@ -195,3 +207,4 @@ try
 except
   close(stream)
 end
+

@@ -18,7 +18,7 @@ If combine==false, returns a list of ngens populations.
 """
 
 function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=2.0, combine::Bool=true )
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   #println("int_burn_in: ",int_burn_in,"  mu: ",mu)
   ic = innovation_collection()
@@ -80,7 +80,7 @@ If combine==false, returns a list of ngens populations.
 """
 function neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=1.0, uniform_start::Bool=false,
     popsize_ratio::Float64=1.0, combine::Bool=true )
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a bottleneck.
     poplist= Population[ Int64[1 for i = 1:N] ]

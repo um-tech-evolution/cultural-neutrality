@@ -22,7 +22,7 @@ If combine==false, returns a list of ngens populations.
 function power_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=1.0, conformist_power::Float64=0.0,
     uniform_start::Bool=false, combine::Bool=true )
   #println("conformist power: ",conformist_power)
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
@@ -70,7 +70,7 @@ toplist_size   is the size of the toplist to use (Acerbi uses 10 for this value)
 
 function acerbi_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, acer_C::Float64; toplist_size::Int64=10, burn_in::Float64=1.0,
     uniform_start::Bool=false, combine::Bool=true )
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
@@ -125,7 +125,7 @@ TODO: Implement what might be called bottomlist anticonformism----which is diffe
 
 function acerbi_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, C::Float64; toplist_size::Int64=0, burn_in::Float64=1.0,
     uniform_start::Bool=false, combine::Bool=true )
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
@@ -179,7 +179,7 @@ TODO: Implement what might be called bottomlist anticonformism----which is diffe
 """
 function bottomlist_anti_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64, C::Float64; bottomlist_size::Int64=1, burn_in::Float64=1.0,
     uniform_start::Bool=false, combine::Bool=true )
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
@@ -319,7 +319,7 @@ function acerbi_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
   if conformist_prob + anti_conformist_prob > 1.0
     error("conformist_prob + anti_conformist_prob must be less than 1.0 in power_mixed_conformist.")
   end
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   new_id = zeros(Int64,1)   # new_id[1] is used to assign a new inteter to each innovation
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
@@ -369,7 +369,7 @@ function power_mixed_conformist_poplist( N::Int64, N_mu::Float64, ngens::Int64,
   if conformist_prob + anti_conformist_prob > 1.0
     error("conformist_prob + anti_conformist_prob must be less than 1.0 in power_mixed_conformist.")
   end
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
     poplist= Population[ Int64[1 for i = 1:N] ]
@@ -438,7 +438,7 @@ function nearly_neutral_power_mixed_conformist_poplist( N::Int64, N_mu::Float64,
   if conformist_prob + anti_conformist_prob > 1.0
     error("conformist_prob + anti_conformist_prob must be less than 1.0 in power_mixed_conformist.")
   end
-  int_burn_in = Int(round(N*burn_in))
+  int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   fitness_table = Dict{Int64,Float64}()  # Fitness table contains the dfe fitness of each id.
   if uniform_start  # All allele values start with the same value.  Start with a selective sweep.
