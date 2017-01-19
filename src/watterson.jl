@@ -4,7 +4,8 @@ Estimates of theta = N_e mu based on Watterson "The homozygosity test of neutral
 allele_freqs is the vector of allele frequecies of the infinite alleles model population.
 =#
 
-export watterson_homozygosity, p_homozygosity, watterson_theta, p_1_4, p_1_6, p_2_6, p_3_0, w_homoz, 
+export watterson_homozygosity, p_homozygosity, watterson_theta, IQV,
+    p_1_4, p_1_6, p_2_6, p_3_0, w_homoz, 
     p_homoz_1_4, p_homoz_1_6, p_homoz_2_6, p_homoz_3_0 
 
 
@@ -28,6 +29,24 @@ end
 function watterson_theta( allele_freqs::Population )
   1.0/watterson_homozygosity( allele_freqs ) - 1.0
 end
+
+@doc """ function IQV()
+Allan Wilcox's "index of quantitative variation" defined by formula (7) 
+  of Mark E. Madsen's "Neutral Cultural Transmission in Time Averaged
+Archaeological Assemblages" arXiv:1024.2043v2 (2012). 
+A measure of "evenness".  IQV of a population with a single trait is 0,
+while IQV of a population with an even distribution of traits is close to 1.0.
+"""
+function IQV( allele_freqs::Population )
+  k = length(allele_freqs)
+  if k == 1
+    return 0.0
+  end
+  Fk = Float64(k)
+  wh = watterson_homozygosity( allele_freqs )
+  (1.0-wh)*Fk/(Fk-1.0)
+end
+  
 
 function p_homozygosity( allele_freqs::Config, p::Float64 )
   p_homozygosity( map(Int64, allele_freqs ), p )

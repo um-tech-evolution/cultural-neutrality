@@ -10,14 +10,11 @@ Command-line program to run the simulation.
  See hyptestjl  for analysis of the resulting CSV file.
  Suggested usage:  julia hyptest.jl configs/example1
 =#
-#=
 if length(ARGS) == 0
   simname = "../experiments/configs/example0"
 else
   simname = ARGS[1]
 end
-=#
-simname = "../data/12_28_16/n_neutral_N:100_500_N_mu:1_5_mixed_alpha:1.0_theta:0.5"
 
 include("$(simname).jl")
 println("simname: ",simname)

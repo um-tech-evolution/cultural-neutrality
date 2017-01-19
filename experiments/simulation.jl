@@ -17,8 +17,10 @@ include("conformist.jl")
 include("../src/NeutralCulturalEvolution.jl")
 
 # If the next 2 lines are changed, the corresponding changes also need to be made in the trial_result type and in writerow.
-const p_homoz_headers = [ "p_1_4", "p_1_6", "p_2_6", "p_3_0" ]
-const p_homoz_coeffs  = [ 1.4, 1.6, 2.6, 3.0 ]
+#const p_homoz_headers = [ "p_1_4", "p_1_6", "p_2_6", "p_3_0" ]
+#const p_homoz_coeffs  = [ 1.4, 1.6, 2.6, 3.0 ]
+const p_homoz_headers = [ ]
+const p_homoz_coeffs  = [ ]
 
 @doc """ function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, ngens::Int64, 
     burn_in::Float64, slat_reps::Int64=100000 ) 
@@ -87,10 +89,10 @@ type trial_result
   #we_prob::Float64
   w_homoz::Float64
   s_homoz::Float64
-  p_1_4      # p-homozygosity for p = 1.4
-  p_1_6      # p-homozygosity for p = 1.6
-  p_2_6      # p-homozygosity for p = 2.6
-  p_3_0      # p-homozygosity for p = 3.0
+  #p_1_4      # p-homozygosity for p = 1.4
+  #p_1_6      # p-homozygosity for p = 1.6
+  #p_2_6      # p-homozygosity for p = 2.6
+  #p_3_0      # p-homozygosity for p = 3.0
 end
 
 @doc """ function writerow(stream::IOStream, trial::Int64, N::Int64, N_mu::Float64, K::Int64, theta::Float64 )
@@ -111,10 +113,10 @@ function writerow(stream::IO, simtype::Int64, trial::Int64, tr::trial_result  )
     #tr.we_prob,     # Watterson exact probability
     tr.s_homoz,     # Slatkin estimated homozygosity = 1/(1+theta) where theta = Slatkin est theta
     tr.w_homoz,     # Watterson estimated homozygosity
-    tr.p_1_4,      # p-homozygosity for p = 1.4
-    tr.p_1_6,      # p-homozygosity for p = 1.6
-    tr.p_2_6,      # p-homozygosity for p = 2.6
-    tr.p_3_0,      # p-homozygosity for p = 3.0
+    #tr.p_1_4,      # p-homozygosity for p = 1.4
+    #tr.p_1_6,      # p-homozygosity for p = 1.6
+    #tr.p_2_6,      # p-homozygosity for p = 2.6
+    #tr.p_3_0,      # p-homozygosity for p = 3.0
   ]
   if simtype == 0  
     mid = Any[]
@@ -200,10 +202,10 @@ function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1
     #se_prob, 
     #we_prob, 
     w_homoz, s_homoz,
-    p_homozygosity( p64, p_homoz_coeffs[1]), 
-    p_homozygosity( p64, p_homoz_coeffs[2]), 
-    p_homozygosity( p64, p_homoz_coeffs[3]), 
-    p_homozygosity( p64, p_homoz_coeffs[4]) 
+    #p_homozygosity( p64, p_homoz_coeffs[1]), 
+    #p_homozygosity( p64, p_homoz_coeffs[2]), 
+    #p_homozygosity( p64, p_homoz_coeffs[3]), 
+    #p_homozygosity( p64, p_homoz_coeffs[4]) 
   )
 end
 
