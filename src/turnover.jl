@@ -84,16 +84,17 @@ If check_Ylist is true, then remove y values from Ylist that do not satisfy
 """
 function turnover( poplst::Vector{Population}, Ylist::Vector{Int64}, N_mu::Float64, 
       check_Ylist::Bool=true )
+  local_ylist = deepcopy(Ylist)
   if check_Ylist
-    # Remove elements from Ylist that do not satisfy Evans and Giometto's condition that
+    # Remove elements from local_ylist that do not satisfy Evans and Giometto's condition that
     #   y < N_mu/0.15 which is implemented conservatively.
-    i = length(Ylist)  
-    if i > 0 && Float64(Ylist[i]) > 5.0*N_mu
-      deleteat!( Ylist, i )
+    i = length(local_ylist)  
+    if i > 0 && Float64(local_ylist[i]) > 5.0*N_mu
+      deleteat!( local_ylist, i )
     end
   end 
   Zlists = Vector{Int64}[]
-  if length(Ylist) == 0
+  if length(local_ylist) == 0
     return Zlists
   end
   c_prev = DataStructures.counter(Int64)
@@ -107,9 +108,9 @@ function turnover( poplst::Vector{Population}, Ylist::Vector{Int64}, N_mu::Float
       Base.push!(c_next,x)
     end
     result_next = unique(sort( poplst[i], by=x->c_next[x], rev=true ))
-    Zlist = zeros(Int64,length(Ylist))
+    Zlist = zeros(Int64,length(local_ylist))
     j = 1
-    for y in Ylist
+    for y in local_ylist
       prev_set = Set(result_prev[1:(min(y,length(result_prev)))])
       next_set = Set(result_next[1:(min(y,length(result_next)))])
       Zlist[j] = length(setdiff( prev_set, next_set )) + length(setdiff( next_set, prev_set ))

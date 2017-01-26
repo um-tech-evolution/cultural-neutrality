@@ -3,7 +3,8 @@
 # Creates output file configs/nn_example.csv
 
 const nn_simtype = 1    # nearly neutral infinite alleles
-@everywhere const N_list     = [40,160]     # popsize 
+popsize_multiplier_list = [1, 2, 4]
+@everywhere const N_list     = [100,200]   # sample size, popsize N=  popsize_multiplier*n
 const N_mu_list= [1.0,2.0]   # Mutation rate as a multiple of 1.0/N
 const L = 3           # number of loci # not used in infinite alleles
 const ngens = 1000      # Generations after burn-in

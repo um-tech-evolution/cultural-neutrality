@@ -70,6 +70,9 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
     end
     new_pop = propsel( poplist[g-1], dfe, fitness_table )
     Base.push!( poplist, new_pop )
+    if g >int_burn_in && g <= ngens + int_burn_in
+      u = unique(new_pop)
+    end
     if combine && g >= int_burn_in+1 && g <= ngens+int_burn_in
       pop_result = vcat( pop_result, new_pop )
     end
