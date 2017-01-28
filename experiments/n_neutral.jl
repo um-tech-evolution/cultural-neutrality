@@ -182,9 +182,9 @@ function add_stats_to_trial_result!( tr::trial_result, poplist::Vector{Populatio
   end
   tr.t2 = len >= 1 ? Float64(sum_list[1])/length(turnover_list) : -1.0
   tr.t4 = len >= 2 ? Float64(sum_list[2])/length(turnover_list) : -1.0
-  tr.t6 = len >= 3 ? Float64(sum_list[2])/length(turnover_list) : -1.0
-  tr.t8 = len >= 4 ? Float64(sum_list[3])/length(turnover_list) : -1.0
-  tr.t10 = len >= 5 ? Float64(sum_list[4])/length(turnover_list) : -1.0
+  tr.t6 = len >= 3 ? Float64(sum_list[3])/length(turnover_list) : -1.0
+  tr.t8 = len >= 4 ? Float64(sum_list[4])/length(turnover_list) : -1.0
+  tr.t10 = len >= 5 ? Float64(sum_list[5])/length(turnover_list) : -1.0
 end
 
 @doc """ function writeheader()

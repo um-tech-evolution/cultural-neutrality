@@ -1,3 +1,4 @@
+export site_type, neutral_inf_sites, update_neutral, update_selected
 #=
 A simplified version of the infinite sites model where sites evolve independently.
  N = popsize
@@ -26,6 +27,12 @@ type innovation_type
 end
 =#
 
+type site_type
+  id::Int64     # the unique id of this site (i. e., trait or allele)
+  count::Int64  # the curent number of copies
+  sel_coef::Float64  # selection coefficient where 1 is neutral.   Does not change
+end
+
 type sim_result_type
   N::Int64
   L::Int64
@@ -48,41 +55,35 @@ Do a neutral infinite sites simulation with popsize N, L loci, mutation rate mu 
     ngens generations, and a burn in time of burn_in*N/N_mu+50 generations.
 Returns a sim_result_type object, but also prints relevant information.
 """
-function neutral_inf_sites( N::Int64, L::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=2.0,
-    ic::innovation_collection=innovation_collection(false) )
-  g_limit = 1000
+function neutral_inf_sites( N::Int64, L::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64=2.0)
+    #ic::innovation_collection=innovation_collection(false) )
+  global fitness_table = Dict{Int64,Float64}()
   int_burn_in = Int(round(burn_in*N/N_mu+50.0))
+  ic = innovation_collection( 1.0 )   # fix_minimum = 1.0 so fixes only if count is N
+  g_limit = 1000 
   mu = N_mu/N
   println("N: ",N)
   println("N_mu: ",N_mu)
   println("ngens: ",ngens)
-  if ic.in_use
-    println("fix minimum: ",ic.fix_minimum)
-  end
-  poplist= Population[ collect(1:N) ]
+  site_list = 
+  poplist= Population[]  # First population has no sites
   new_id = 1
-  for i = 1:N
-    # Note that dfe_advantageous(i), dfe_deleterious(i), dfe_mixed(i) do not depend on i, but dfe_mod(i) does depend on i
-    fit = dfe_fitness(i, dfe, fitness_table )  # set fitness of i to be dfe(i).
-    new_id += 1
-  end
-  if combine
-    pop_result = Population()
-  end
   i = 1
   g = 2
   done = false
   while !done && g < g_limit+ngens+int_burn_in
     #println("generation: ",g)
     update_innovations!( ic, g, N )
-    #num_mutations = rand(Poisson(mu*L*N))
+    num_mutations = rand(Binomial(N,mu))
     #println("g: ",g,"  num_mutations: ",num_mutations)
-    #sim_result.number_mutations += num_mutations
-    for j in 1:num_mutations
-      push!(ic,innovation(i,g))
-      #println("new innovation: start gen: ",ic.list[end].start_gen,"  history: ",ic.list[end].history)
-      i += 1
+    if g < ngens + int_burn_in
+      for j in 1:num_mutations
+        ic_push!(ic,innovation(new_id,g))  # Selectively neutral for now
+        #println("new innovation: start gen: ",ic.list[end].start_gen,"  history: ",ic.list[end].history)
+        new_id += 1
+      end
     end
+    #=
     for i in 1:N
       if rand() < mu
         poplist[g-1][i] = new_id
@@ -94,9 +95,12 @@ function neutral_inf_sites( N::Int64, L::Int64, N_mu::Float64, ngens::Int64; bur
         new_id += 1
       end
     end
+    =#
     g += 1
     done = (g > ngens) && length(ic.active) == 0
+    print(" ",N_inf_sites(ic))
   end
+  println("N_inf_sites: ", N_inf_sites(ic) )
   print_summary( ic )
   ic
 end
@@ -122,6 +126,6 @@ end
 # Set some values for testing
 n=N=10
 ngens=9
-mu = 1.0/N
+N_mu = 1.0
 burn_in = 0.0
 L=2

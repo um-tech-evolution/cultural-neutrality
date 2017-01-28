@@ -6,7 +6,8 @@ Innovations are partitioned into 3 subsets, active, fixed, and extinct.
 
 export innovation_collection, ic_push!, update_innovations!, ic_update!, make_extinct!, 
     make_fixed!, print_summary, average_time_to_extinction, average_time_to_fixation, 
-    fixed_fraction, average_fitness_fixed, average_fitness_extinct, average_fitness_all, fix_test
+    fixed_fraction, average_fitness_fixed, average_fitness_extinct, average_fitness_all, fix_test,
+    N_inf_sites
 
 type innovation_collection
   list::Dict{Int64,innovation_type} #    Stores a collection of innovations
@@ -54,7 +55,8 @@ function fix_test( N::Int64, new_allele_freq::Int64 )
 end
 
 # Update all active innovations, and make some extinct and fixed
-function update_innovations!( ic::innovation_collection, g::Int64, N::Int64, fixation_test::Function=fix_test )
+# This version is used only by infsites.jl.
+function update_innovations!( ic::innovation_collection, g::Int64, N::Int64 )
   if !ic.in_use 
     return
   end
@@ -116,6 +118,17 @@ function make_fixed!( innov_collection::innovation_collection, index::Int64, gen
   make_fixed!( innov_collection.list[index], generation )
   Base.pop!( innov_collection.active,index)
   Base.push!( innov_collection.fixed,index)
+end
+
+function N_inf_sites( ic::innovation_collection )
+  if !ic.in_use 
+    return
+  end
+  sum_N = 0
+  for index in ic.active  
+    sum_N += ic.list[index].history[end]
+  end
+  sum_N
 end
 
 # TODO:  Move to conformist_poplist.jl or delete
