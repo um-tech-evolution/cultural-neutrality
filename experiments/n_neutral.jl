@@ -1,3 +1,4 @@
+# Front end for src/nearly_neutral_poplist.jl
 include("../src/NeutralCulturalEvolution.jl")
 #=
 include("../src/aliases.jl")
@@ -24,6 +25,9 @@ try mkdir(date_string) catch end   # create today's directory with no error if i
 println("date string: ",date_string)
 Ylist = [2,4,6,8,10]
 println("Ylist: ",Ylist)
+if !isdefined(:mu_list_flag)
+  mu_list_flag=false
+end
 
 
 @doc """ type trial_result
@@ -35,7 +39,6 @@ type trial_result
   n::Int64    # sample size, must be <= N
   N::Int64    # popsize
   N_mu::Float64  # N*mu, population mutation rate
-  L::Int64    # number of loci  only used for infinite sites
   ngens::Int64
   burn_in::Float64
   fix_minimum::Float64
@@ -71,10 +74,10 @@ function add_expected_richness( tr::trial_result )
 end
 
 # Constructor that sets the parameters
-function trial_result( nn_symtype::Int64, n::Int64, N::Int64, N_mu::Float64, L::Int64, ngens::Int64,
+function trial_result( nn_symtype::Int64, n::Int64, N::Int64, N_mu::Float64, ngens::Int64,
     fix_minimum::Float64=0.5, burn_in::Float64=2.0, dfe::Function=dfe_neutral, 
     dfe_str::AbstractString="neutral" )
-  tr = trial_result( nn_simtype, n, N, N_mu, L, ngens, burn_in, fix_minimum, dfe, dfe_str, 0.0,
+  tr = trial_result( nn_simtype, n, N, N_mu, ngens, burn_in, fix_minimum, dfe, dfe_str, 0.0,
       0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0,0.0,0.0,0,0,0.0 )
   add_expected_richness( tr )
   tr
@@ -90,7 +93,7 @@ function print_trial_result( tr::trial_result )
   println("n: ", tr.n)
   println("N: ", tr.N)
   println("N_mu: ", tr.N_mu)
-  println("L: ", tr.L)
+  println("mu: ", tr.N_mu/tr.N)
   println("ngens: ", tr.ngens)
   println("burn_in: ", tr.burn_in)
   println("fix_minimum: ", tr.fix_minimum)
@@ -130,18 +133,56 @@ function convert_to_trial_result( ic::innovation_collection, tr::trial_result )
   tr.average_fitness_all = average_fitness_all( ic::innovation_collection )
 end
 
-function run_trials(popsize_multiplier_list::Vector{Int64}=[1])
+function run_trials(popsize_multiplier_list::Vector{Int64}=[1]; mu_list_flag::Bool=false)
   println("stream: ",stream)
   trial = 1
   N = N_list[1]
   n = Int(floor(N*(1//popsize_multiplier_list[1])))
-  tr = trial_result( nn_simtype, n, N, N_mu_list[1], L, ngens, fix_minimum, burn_in, dfe, dfe_str )
-  writeheader(stream, popsize_multiplier_list, N_list, N_mu_list, tr )
-  for N_mu in N_mu_list
+  if !mu_list_flag
+    tr = trial_result( nn_simtype, n, N, N_mu_list[1], ngens, fix_minimum, burn_in, dfe, dfe_str )
+    writeheader(stream, popsize_multiplier_list, N_list, N_mu_list, tr )
+    for N_mu in N_mu_list
+      for N in N_list
+        for psize_m in popsize_multiplier_list
+          n = Int(floor(N*(1//psize_m)))
+          tr = trial_result( nn_simtype, n, N, N_mu, ngens, fix_minimum, burn_in, dfe, dfe_str )
+          run_trial( tr )
+          writerow(stream, trial, tr )
+          trial += 1
+        end
+      end
+    end
+  else  # if mu_list_flag
+    tr = trial_result( nn_simtype, n, N, N*mu_list[1], ngens, fix_minimum, burn_in, dfe, dfe_str )
+    writeheader(stream, popsize_multiplier_list, N_list, mu_list, tr, mu_list_flag=mu_list_flag )
+    for mu in mu_list
+      for N in N_list
+        for psize_m in popsize_multiplier_list
+          n = Int(floor(N*(1//psize_m)))
+          N_mu = N*mu
+          tr = trial_result( nn_simtype, n, N, N_mu, ngens, fix_minimum, burn_in, dfe, dfe_str )
+          run_trial( tr )
+          writerow(stream, trial, tr, mu_list_flag=mu_list_flag )
+          trial += 1
+        end
+      end
+    end
+  end  # if !mu_list_flag
+end
+
+function run_trials_mu(popsize_multiplier_list::Vector{Int64}=[1])
+  println("stream: ",stream)
+  trial = 1
+  N = N_list[1]
+  n = Int(floor(N*(1//popsize_multiplier_list[1])))
+  tr = trial_result( nn_simtype, n, N, N*mu_list[1], ngens, fix_minimum, burn_in, dfe, dfe_str )
+  writeheader(stream, popsize_multiplier_list, N_list, mu_list, tr )
+  for mu in mu_list
     for N in N_list
       for psize_m in popsize_multiplier_list
         n = Int(floor(N*(1//psize_m)))
-        tr = trial_result( nn_simtype, n, N, N_mu, L, ngens, fix_minimum, burn_in, dfe, dfe_str )
+        N_mu = N*mu
+        tr = trial_result( nn_simtype, n, N, N_mu, ngens, fix_minimum, burn_in, dfe, dfe_str )
         run_trial( tr )
         writerow(stream, trial, tr )
         trial += 1
@@ -193,23 +234,14 @@ Write header line for output CSV file that corresponds to stream.
 See the comments for run_simulation for a description of the parameters.
 """
 function writeheader(stream::IO, popsize_multiplier_list::Vector{Int64}, N_list::Vector{Int64}, 
-    N_mu_list::Vector{Float64}, tr::trial_result )
+    mu_list::Vector{Float64}, tr::trial_result; mu_list_flag::Bool=false )
   dfe_params = [:dfe_adv_prob, :dfe_adv_alpha, :dfe_adv_theta, :dfe_disadv_prob, :dfe_disadv_alpha, :dfe_disadv_theta]
-  #=
-  if  isdefined(:popsize_multipler_list)
-    pml = "# popsize_multilier_list=$(popsize_multipler_list)"
-  elseif isdefined(:popsize_multiplier)
-    pml = "# popsize_multilier=$(popsize_multipler)"
-  else
-    pml = "# no posize multiplier or popsize multiplier list"
-  end
-  =#
   param_strings = [
     "# $(string(Dates.today()))",
     "# $((nn_simtype==1)?"infinite alleles model":"infinite_sites_model")",
     "# popsize_multiplier_list=$(popsize_multiplier_list)",
-    "# N_list=\"$(N_list)\"",
-    "# N_mu_list=\"$(N_mu_list)\"",
+    "# N_list=$(N_list)",
+    mu_list_flag ? "# mu_list=$(mu_list)": # N_mu_list=$(N_mu_list)",
     "# ngens=$(tr.ngens)",
     "# Ylist=$(Ylist)",
     "# burn_in=$(tr.burn_in)",
@@ -223,13 +255,16 @@ function writeheader(stream::IO, popsize_multiplier_list::Vector{Int64}, N_list:
     end
   end
   write(stream, join(param_strings, "\n"), "\n")
-  first_heads = ["trial", "n", "N", "N_mu"]
+  first_heads = [
+    "type",
+    #  "n", 
+    "N", (mu_list_flag ? "mu":"N_mu")]
   mid_heads = []
   last_heads =
   [ "expected_richness",
     "average_richness",
-    "expected_w_homoz",
-    "w_homoz",
+    "expected_w_heteroz",
+    "w_heteroz",
     "IQV",
     "num_extinct", 
     "num_fixed", 
@@ -258,12 +293,12 @@ function writeheader(stream::IO, popsize_multiplier_list::Vector{Int64}, N_list:
   write(stream, line, "\n")
 end
 
-function writerow(stream::IO, trial::Int64, tr::trial_result  )
+function writerow(stream::IO, trial::Int64, tr::trial_result; mu_list_flag::Bool=false   )
   first = Any[
-    trial,
-    tr.n,           # sample size
+    (isdefined(:type_str) ? type_str :trial),
+    #tr.n,           # sample size
     tr.N,           # popsize
-    tr.N_mu,        # N/mu, population mutation rate
+    mu_list_flag ? tr.N_mu/tr.N:tr.N_mu,          
   ]
   if tr.nn_simtype == 0
     mid = Any[]
@@ -271,8 +306,8 @@ function writerow(stream::IO, trial::Int64, tr::trial_result  )
     mid = Any[
       tr.expected_richness,
       tr.average_richness,
-      tr.expected_w_homoz,
-      tr.w_homoz,
+      1.0-tr.expected_w_homoz,
+      1.0-tr.w_homoz,
       tr.IQV,
       tr.number_extinctions,
       tr.number_fixations,
@@ -294,9 +329,9 @@ function writerow(stream::IO, trial::Int64, tr::trial_result  )
 end
 
 if isdefined(:popsize_multiplier_list)
-  run_trials(popsize_multiplier_list)
+  run_trials(popsize_multiplier_list, mu_list_flag=mu_list_flag )
 else
-  run_trials()
+  run_trials( mu_list_flag=mu_list_flag)
 end
 #=
 try

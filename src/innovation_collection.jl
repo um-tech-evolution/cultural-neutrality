@@ -62,7 +62,7 @@ function update_innovations!( ic::innovation_collection, g::Int64, N::Int64 )
   end
   for index in ic.active  # updates sites to the next generation
     #println("innovation: start gen: ",ic.list[index].start_gen,"  history: ",ic.list[index].history)
-    new_allele_freq = update_neutral( index, N, ic.list[index].history[end] )
+    new_allele_freq = update_selected( index, N, ic.list[index].history[end], ic.list[index].selection_coefficient )
     #println("new_allele_freq: ",new_allele_freq)
     ic_update!(ic,index,g,new_allele_freq)
     if new_allele_freq == 0  # extinction
