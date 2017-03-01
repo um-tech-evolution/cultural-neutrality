@@ -1,5 +1,5 @@
 # Configuration for running Slatkin and Watterson tests on the results of multiple evolutions
-const simtype = 3    # Nearly Neutral Power Conformist
+@everywhere const simtype = 3    # Nearly Neutral Power Conformist
 const popsize_multiplier = 2.0  # popsize N is this multiple of sample size n
 @everywhere const n_list     = [25]     # sample size list, popsize N may be larger
 const N_mu_list= [1.0, 5.0 ]   # Mutation rate as a multiple of 1.0/N

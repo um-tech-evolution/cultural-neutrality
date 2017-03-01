@@ -193,7 +193,7 @@ end
 
 function run_trial( tr::trial_result )
   if tr.nn_simtype == 1
-    ic = innovation_collection( tr.fix_minimum )
+    ic = innovation_collection( tr.N, tr.fix_minimum )
     poplist = nearly_neutral_poplist(tr.N,tr.N_mu,tr.ngens,tr.dfe,combine=false,ic=ic)
     convert_to_trial_result( ic, tr )
     if tr.n < tr.N

@@ -1,6 +1,7 @@
-export dfe_fitness, fitness, nearly_neutral_poplist, dfe_deleterious,dfe_advantageous, dfe_mixed, dfe_mod, dfe_neutral
+export dfe_fitness, fitness, nearly_neutral_poplist, dfe_deleterious,dfe_advantageous, dfe_mixed, 
+    dfe_mod, dfe_neutral, dfe_fixed
 
-using Distributions
+#using Distributions
 
 @doc """ function dfe_fitness( p::Int64, dfe::Function, fitness_table::Dict{Int64,Float64} )
 Fitness function as saveed in dictionary fitness_table.
@@ -22,7 +23,7 @@ Note:  dfe is "distribution of fitness effects" function.
 """
 function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Function; burn_in::Float64=2.0, 
     uniform_start::Bool=false, nnselect::Int64=1, combine::Bool=true,
-    ic::innovation_collection=innovation_collection(false) )
+    ic::innovation_collection=innovation_collection(N,false) )
   #println("N: ",N)
   #println("N_mu: ",N_mu)
   #println("ngens: ",ngens)
@@ -63,7 +64,7 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
         fit = dfe_fitness( new_id, dfe, fitness_table )  # Set fitness of new_id
         if g > int_burn_in && g <= ngens+int_burn_in
           #println("id: ",new_id,"  fit: ",fit)
-          ic_push!( ic, innovation( new_id, g, fit ) ) 
+          ic_push!( ic, innovation( new_id, N, g, fit ) ) 
         end
         new_id += 1
       end
@@ -136,6 +137,12 @@ end
 """
 function dfe_neutral( x::Int64 )
   return 1.0   # flat fitness for no selection
+end
+
+@doc """function dfe_neutral( x::Int64; s::Float64=0.0 )
+"""
+function dfe_fixed( x::Int64; s::Float64=0.0 )
+  return 1.0 + s   # fitness corresponding to selection coefficient s
 end
 
 #=  Tests

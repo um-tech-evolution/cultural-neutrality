@@ -11,20 +11,28 @@ type innovation_type
   start_gen::Int64    # the generation (time step) when the innovation was generated
   final_gen::Int64    # the generation when the innovation went extinct.  Should be zero while innovation is evolving
   selection_coefficient::Float64    # The selection coefficient of the innovation (allele)
+  sum_counts::Int64   # the current accumulated sum of the counts per generation for infinite sites
+  sum_heteroz::Float64  # the current accumulated sum of heterozygosities for infinite sites
   history::Vector{Int64}   # history[i] = number of copies in the (i-1)th generation after start_gen
 end
 
 @doc """ function innovation() 
   Constructor for an innovation object.
 """
-function innovation( id::Int64, start_gen::Int64, selection_coef::Float64=1.0 )
-  return innovation_type( id, start_gen, 0, selection_coef, Int64[1] )
+function innovation( id::Int64, N::Int64, start_gen::Int64, selection_coef::Float64=1.0 )
+  initial_heteroz = 1.0 - watterson_homozygosity([N-1,1])
+  return innovation_type( id, start_gen, 0, selection_coef, 1, initial_heteroz, Int64[1] )
 end
 
-function iupdate!( innov::innovation_type, generation::Int64, new_allele_freq::Int64 )
-  #println("inn update! index: ",innov.identifier,"  gen: ",generation,"  len(hist): ",length(innov.history), "  start_gen: ",innov.start_gen)
+function iupdate!( innov::innovation_type, N::Int64, generation::Int64, new_allele_freq::Int64 )
   @test generation == length(innov.history) + innov.start_gen 
+  if new_allele_freq > 0
+    innov.sum_counts += new_allele_freq
+    innov.sum_heteroz += 1.0 - watterson_homozygosity([N-new_allele_freq, new_allele_freq])
+  end
   Base.push!( innov.history, new_allele_freq )
+  #println("inn update! index: ",innov.identifier,"  gen: ",generation,"  len(hist): ",length(innov.history), "  start_gen: ",innov.start_gen)
+  #println("new_allele_freq: ",new_allele_freq,"  sum_counts: ",innov.sum_counts,"  sum_heteroz: ",innov.sum_heteroz)
   new_allele_freq
 end
 
@@ -33,6 +41,7 @@ function make_extinct!( innov::innovation_type, generation::Int64 )
   @test generation == length(innov.history) + innov.start_gen - 1
   innov.final_gen = generation
   #Base.push!( innov.history, 0 )
+  innov.history = Vector{Int64}[]
 end
 
 # Should be called after, but on the same generation, as update!
@@ -42,4 +51,5 @@ function make_fixed!( innov::innovation_type, generation::Int64 )
     innov.final_gen = generation
   end
   #Base.push!( innov.history, allele_freq )
+  innov.history = Vector{Int64}[]
 end

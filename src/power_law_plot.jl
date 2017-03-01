@@ -1,5 +1,5 @@
-using DataFrames
-using DataStructures
+#using DataFrames
+#using DataStructures
 #=
 The function bin_logs returns a data frame which can be plotted to generate a power law plot.
 The data frame could be written to a CSV file and imported into another program for plotting.

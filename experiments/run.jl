@@ -18,6 +18,7 @@ end
 
 include("$(simname).jl")
 println("simname: ",simname)
+#println("p_homoz_flag: ",p_homoz_flag)
 
 if  simtype == 0   # Neutral---no conformity
   run_simulation(simname, simtype, T, n_list, N_mu_list, ngens, burn_in, 

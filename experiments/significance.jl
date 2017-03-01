@@ -84,7 +84,7 @@ function significance_dicts( sig_cutoff::Float64, n::Int64, funct_list::Vector{F
   end
   for k = 1:n
     C = ncfgs(n,k)
-    println("significance_dicts: k: ",k)
+    #println("significance_dicts: k: ",k)
     for i = 1:length(funct_list)
       cP =     cumm_dist( C, Btbl, funct_list[i] )
       sp = significance_point( sig_cutoff, cP )
@@ -112,7 +112,7 @@ function significance_dicts_map( sig_cutoff::Float64, n::Int64, funct_list::Vect
   end
   Clist = build_allele_configs(n)
   for k = 1:n
-    println("significance_dicts: k: ",k)
+    #println("significance_dicts: k: ",k)
     for i = 1:length(funct_list)
       cP =     cumm_dist( Clist[k], Btbl, funct_list[i] )
       sp = significance_point( sig_cutoff, cP )
@@ -149,7 +149,7 @@ function add_significance_columns( df::DataFrame,  sig_cutoff::Float64, n::Int64
         new_column[j] =  df[col_symbol_list[i]][j]<dict_list[i][k] ? 1 : 0 
       end
     end
-    df[symbol(col_symbol_list[i],"_sig")] = new_column
+    df[Symbol(col_symbol_list[i],"_sig")] = new_column
     #println("i:",i,"  new_column: ",transpose(new_column))
   end
   df

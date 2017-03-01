@@ -1,6 +1,7 @@
 # Configuration for running Slatkin and Watterson tests on the results of multiple evolutions
 @everywhere const simtype = 2    # Acerbi conformist
-@everywhere const n_list     = [25]     # sample size list.  Popsize is popsize_multiplier times sample size
+#const simtype = 2    # Acerbi conformist
+const n_list     = [25]     # sample size list.  Popsize is popsize_multiplier times sample size
 const popsize_multiplier = 2.0  # popsize N is this multiple of sample size n
 const N_mu_list= [1.0, 2.0]   # Mutation rate as a multiple of 1.0/N
 const cprob_list = [0.0, 0.2]    # probability of conformity

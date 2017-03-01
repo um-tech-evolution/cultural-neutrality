@@ -11,26 +11,26 @@
 
 cd ../experiments
 
-julia -p 4 -L simulation.jl run.jl configs/example1
+julia -L simulation.jl run.jl configs/example1
 julia hyptest.jl configs/example1
 
-julia -p 4 -L simulation.jl run.jl configs/example2
+julia -L simulation.jl run.jl configs/example2
 julia hyptest.jl configs/example2
 
-julia -p 4 -L simulation.jl run.jl configs/example3
+julia -L simulation.jl run.jl configs/example3
 julia hyptest.jl configs/example3
 
-julia -p 4 -L simulation.jl run.jl configs/example4
+julia -L simulation.jl run.jl configs/example4
 julia hyptest.jl configs/example4
 
-julia -p 4 -L simulation.jl run.jl configs/example5
+julia -L simulation.jl run.jl configs/example5
 julia hyptest.jl configs/example5
 
-julia -p 4 -L simulation.jl run.jl configs/T100_nn_adv_n50_pm2
-julia significance.jl configs/T100_nn_adv_n50_pm2
-julia hyptest.jl configs/T100_nn_adv_n50_pm2
+julia -L simulation.jl run.jl configs/T100_pow_neg_n70_pm1
+julia significance.jl configs/T100_pow_neg_n70_pm1
+julia hyptest.jl configs/T100_pow_neg_n70_pm1
 
-julia -p 4 -L simulation.jl run.jl configs/T100_pow_neg_n50_pm1
+julia -L simulation.jl run.jl configs/T100_pow_neg_n50_pm1
 julia significance.jl configs/T100_pow_neg_n50_pm1
 julia hyptest.jl configs/T100_pow_neg_n50_pm1
 

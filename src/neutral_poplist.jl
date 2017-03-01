@@ -21,7 +21,7 @@ function simple_poplist( N::Int64, N_mu::Float64, ngens::Int64; burn_in::Float64
   int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   mu = N_mu/N
   #println("int_burn_in: ",int_burn_in,"  mu: ",mu)
-  ic = innovation_collection()
+  ic = innovation_collection(N)
   poplist= Population[ collect(1:N) ]
   for i in poplist[1]
     ic_push!(ic,innovation(i,1))

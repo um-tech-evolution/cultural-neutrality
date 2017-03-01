@@ -3,7 +3,7 @@ Author:  David Blasen, May 2016
 Revisions: Alden Wright, Oct. to  Dec. 2016
 =#
 export power_law_estimates, power_law_bootstrap
-using RCall
+#using RCall
 #using DataFrames
 R"library(poweRlaw)"
 

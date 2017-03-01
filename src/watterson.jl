@@ -4,7 +4,7 @@ Estimates of theta = N_e mu based on Watterson "The homozygosity test of neutral
 allele_freqs is the vector of allele frequecies of the infinite alleles model population.
 =#
 
-export watterson_homozygosity, p_homozygosity, watterson_theta, IQV,
+export watterson_homozygosity, p_homozygosity, ns_homozygosity, watterson_theta, IQV,
     p_1_4, p_1_6, p_2_6, p_3_0, w_homoz, 
     p_homoz_1_4, p_homoz_1_6, p_homoz_2_6, p_homoz_3_0 
 
@@ -60,6 +60,58 @@ function p_homozygosity( allele_freqs::Population, p::Float64 )
   end
   Float64(sum_a_sq)/Float64(n^p)
 end
+
+@doc """ function ns_homozygosity()
+Returns n_homozygosity computed over pop members with fitness 1.0, and
+s_homozygosity computed over pop members with fitness != 1.0.
+"""
+function ns_homozygosity( pop::Population, dfe::Function, fitness_table::Dict{Int64,Float64})
+  println("ns_homozygosity")
+  n_pop = Population()
+  s_pop = Population()
+  for x in pop
+    if dfe_fitness(x, dfe, fitness_table ) == 1.0
+      Base.push!(n_pop,x)
+    else
+      Base.push!(s_pop,x)
+    end
+  end
+  println("length(n_pop): ",length(n_pop),"  length(s_pop): ",length(s_pop))
+  if length( n_pop ) > 0
+    n_allele_freqs = pop_counts64( n_pop )
+    n_n = sum(n_allele_freqs)
+    sum_n_sq = 0.0
+    for a in n_allele_freqs
+      sum_n_sq += Float64(a)^2
+    end
+    n_homoz = Float64(sum_n_sq)/Float64(n_n^2)
+  else
+    n_homoz = 0.0
+  end
+  if length( s_pop ) > 0
+    s_allele_freqs = pop_counts64( s_pop )
+    n_s = sum(s_allele_freqs)
+    sum_s_sq = 0.0
+    for a in s_allele_freqs
+      sum_s_sq += Float64(a)^2
+    end
+    s_homoz = Float64(sum_s_sq)/Float64(n_s^2)
+  else
+    s_homoz = 0.0
+  end
+  ( n_homoz, s_homoz )
+end
+
+@doc """ function heterozygosity_ratio()
+H_T/H_0 ratio given as formula 5.25 page 250 of Hartl & Clark 4th ed.
+Derived from Kimura's 1983 book.
+See notes/2_17_17heterozygostity_ratio_simulation.txt
+and notes/2_18_17heterozygosity_ratio.docx
+"""
+function heterozygosity_ratio(N,s,haploid=true)
+  P = haploid ? 1.0 : 2.0  #  1.0 for haploid, 2.0 for diploid
+  2*(2*P*N*s-1+exp(-2*P*N*s))/(2*P*N*s*(1-exp(-2*P*N*s)))
+end 
 
 #=
 function watterson_theta( allele_freqs::Config )

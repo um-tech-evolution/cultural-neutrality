@@ -1,5 +1,10 @@
 export Population, PopList, ConfigInt, Config, ConfigList, ConfigConfigList, ConfigConfigConfigList
 
+using DataFrames
+using Distributions
+using DataStructures
+using RCall
+
 typealias ConfigInt Int16     # Change to UInt8 if N > 127
 typealias Config Array{ConfigInt,1}   # A config
 typealias ConfigList Array{Array{ConfigInt,1},1}  # A list of configs correponding to N, K

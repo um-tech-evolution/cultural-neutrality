@@ -85,7 +85,7 @@ function hyptest_results( df::DataFrame, multi_value_list_syms::Vector{Symbol}, 
   # Note that c_symbol might be :cpower or :acer_C or :nn_select.  
   result_df = by(df, multi_value_list_syms ) do d
     if p_sig_symbol != :none
-      p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
+      p_symbol = Symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
     end
     rdf = DataFrame()
     #=
@@ -228,7 +228,7 @@ function hyptest( simname )
   # TODO:  what is sigtest and p_sig_symbol?
   if sigtest
     p_sig_symbol = names(df)[end]  # assume that the last name is the p_homozygosity symbol
-    p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
+    p_symbol = Symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
     println("p_sig_symbol: ",names(df)[end])
 	  hypdf = hyptest_results( df, multi_value_list_syms, one_value_list_syms, lo_val, hi_val, p_sig_symbol )
   else
@@ -261,10 +261,10 @@ function hyptest( simname )
   if sigtest
     # Rename the p-homozygsity columns that correspond to p_sig_symbol (see above) to be more meaningful.
     p_sym_names = [:p_sym_mean, :p_sym_lo, :p_sym_hi, :p_sym_t2err]
-    p_symbol = symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
+    p_symbol = Symbol(string(p_sig_symbol)[1:(end-4)])   # remove "_sig" from the end of p_sig_symbol
     p_sym_string = string(p_symbol)
-    p_new_names = [ symbol("$(p_sym_string)_mean"), symbol("$(p_sym_string)_lo"), symbol("$(p_sym_string)_hi"),
-      symbol("$(p_sym_string)_t2_err") ]
+    p_new_names = [ Symbol("$(p_sym_string)_mean"), Symbol("$(p_sym_string)_lo"), Symbol("$(p_sym_string)_hi"),
+      Symbol("$(p_sym_string)_t2_err") ]
     rename!( hypdf, p_sym_names, p_new_names )
   end
 	#writetable("$(simname)_hypdf.csv",hypdf)

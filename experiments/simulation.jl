@@ -14,13 +14,20 @@ At this time, runs only on a Linux system due to the dependence on the shared li
 #Note:  The location of the shared library file  slatkin.so  must be in LD_LIBRARY_PATH on a Linux system
 #@everywhere using NeutralCulturalEvolution  # moved to the end of this file due to what I think is a bug in Julia
 include("conformist.jl")
-include("../src/NeutralCulturalEvolution.jl")
+#include("../src/NeutralCulturalEvolution.jl")
 
+# This flag may be overwritten when the config file is loaded.
+p_homoz_flag = false
 # If the next 2 lines are changed, the corresponding changes also need to be made in the trial_result type and in writerow.
-#const p_homoz_headers = [ "p_1_4", "p_1_6", "p_2_6", "p_3_0" ]
-#const p_homoz_coeffs  = [ 1.4, 1.6, 2.6, 3.0 ]
-const p_homoz_headers = [ ]
-const p_homoz_coeffs  = [ ]
+function p_homoz_setup()
+  if p_homoz_flag
+    global p_homoz_headers = [ "p_1_4", "p_1_6", "p_2_6", "p_3_0" ]
+    global p_homoz_coeffs  = [ 1.4, 1.6, 2.6, 3.0 ]
+  else
+    global p_homoz_headers = [ ]
+    global p_homoz_coeffs  = [ ]
+  end
+end
 
 @doc """ function writeheader(stream::IO, simtype::Int64, T::Int64, n_list::Vector{Int64}, N_mu_list::Vector{Float64}, ngens::Int64, 
     burn_in::Float64, slat_reps::Int64=100000 ) 
@@ -89,10 +96,10 @@ type trial_result
   #we_prob::Float64
   w_homoz::Float64
   s_homoz::Float64
-  #p_1_4      # p-homozygosity for p = 1.4
-  #p_1_6      # p-homozygosity for p = 1.6
-  #p_2_6      # p-homozygosity for p = 2.6
-  #p_3_0      # p-homozygosity for p = 3.0
+  p_1_4      # p-homozygosity for p = 1.4
+  p_1_6      # p-homozygosity for p = 1.6
+  p_2_6      # p-homozygosity for p = 2.6
+  p_3_0      # p-homozygosity for p = 3.0
 end
 
 @doc """ function writerow(stream::IOStream, trial::Int64, N::Int64, N_mu::Float64, K::Int64, theta::Float64 )
@@ -118,6 +125,14 @@ function writerow(stream::IO, simtype::Int64, trial::Int64, tr::trial_result  )
     #tr.p_2_6,      # p-homozygosity for p = 2.6
     #tr.p_3_0,      # p-homozygosity for p = 3.0
   ]
+  if p_homoz_flag
+    last = vcat(last,
+     [tr.p_1_4,      # p-homozygosity for p = 1.4
+      tr.p_1_6,      # p-homozygosity for p = 1.6
+      tr.p_2_6,      # p-homozygosity for p = 2.6
+      tr.p_3_0,      # p-homozygosity for p = 3.0
+     ])
+  end
   if simtype == 0  
     mid = Any[]
   elseif simtype == 1 
@@ -192,21 +207,32 @@ function run_trial( n::Int64, N_mu::Float64, ngens::Int64; psize_mult::Float64=1
   #ewens_est_K = ewens_K_est( 2*N_mu, N )
   #slatkin_est_K = ewens_K_est( sr.theta_estimate, N )
   #TODO:  include the p_homozygosity parameters in the initialization data
-  p_1_4 = p_homozygosity( p64, 1.4 )
-  p_1_6 = p_homozygosity( p64, 1.6 )
-  p_2_6 = p_homozygosity( p64, 2.6 )
-  p_3_0 = p_homozygosity( p64, 3.0 )
-  trial_result(N, n, N_mu, length(p64), cprob, acprob, cpower, acpower, topsize, bottomsize, bottom, acerbi_flag, dfe,
-     sr.probability, 
-    # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
-    #se_prob, 
-    #we_prob, 
-    w_homoz, s_homoz,
-    #p_homozygosity( p64, p_homoz_coeffs[1]), 
-    #p_homozygosity( p64, p_homoz_coeffs[2]), 
-    #p_homozygosity( p64, p_homoz_coeffs[3]), 
-    #p_homozygosity( p64, p_homoz_coeffs[4]) 
-  )
+  if p_homoz_flag
+    p_1_4 = p_homozygosity( p64, p_homoz_coeffs[1] )
+    p_1_6 = p_homozygosity( p64, p_homoz_coeffs[2] )
+    p_2_6 = p_homozygosity( p64, p_homoz_coeffs[3] )
+    p_3_0 = p_homozygosity( p64, p_homoz_coeffs[4] )
+    trial_result(N, n, N_mu, length(p64), cprob, acprob, cpower, acpower, topsize, bottomsize, bottom, acerbi_flag, dfe,
+       sr.probability, 
+      # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
+      #se_prob, 
+      #we_prob, 
+      w_homoz, s_homoz,
+      p_homozygosity( p64, p_homoz_coeffs[1]), 
+      p_homozygosity( p64, p_homoz_coeffs[2]), 
+      p_homozygosity( p64, p_homoz_coeffs[3]), 
+      p_homozygosity( p64, p_homoz_coeffs[4]) 
+    )
+  else
+    trial_result(N, n, N_mu, length(p64), cprob, acprob, cpower, acpower, topsize, bottomsize, bottom, acerbi_flag, dfe,
+       sr.probability, 
+      # The following 2 lines can be uncommented if 2 correponding lines uncommented above, and if some lines in hyptest.jl are uncommented.
+      #se_prob, 
+      #we_prob, 
+      w_homoz, s_homoz,
+      0.0, 0.0, 0.0, 0.0
+    )
+  end
 end
 
 type neutral_trial_type
@@ -282,6 +308,7 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
       acer_flag_list::Vector{Bool}=Bool[], bottom_list::Vector{Bool}=Bool[],
       topsize_list::Vector{Int64}=Int64[], bottomsize_list::Vector{Int64}=Int64[],
       dfe_list::Vector{Function}=Function[dfe_neutral] )
+  p_homoz_setup()
   println("run_simulation")
   for n in n_list
     if n > typemax(ConfigInt)
@@ -379,4 +406,4 @@ function run_simulation(simname::AbstractString, simtype::Int64, T::Int64, n_lis
   close(stream)
 end
 #include("conformist.jl")
-#include("../src/NeutralCulturalEvolution.jl")
+include("../src/NeutralCulturalEvolution.jl")

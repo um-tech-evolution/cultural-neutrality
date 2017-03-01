@@ -1,5 +1,5 @@
 # Configuration for running Slatkin and Watterson tests on the results of multiple evolutions
-const simtype = 1    # Power conformity
+@everywhere const simtype = 1    # Power conformity
 const T     = 40      # Number of trials
 const popsize_multiplier = 1.0  # popsize N is this multiple of sample size n
 @everywhere const n_list     = [50,100]     # sample size n list, popsize N may be larger
