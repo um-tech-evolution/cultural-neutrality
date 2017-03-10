@@ -55,6 +55,12 @@ function inf_sites( N::Int64, N_mu::Float64, ngens::Int64;
     #print(" ",N_inf_sites(ic))
   end
   println("Naverage: ", Float64(N_sum)/ngens )
+  #(count_adv_fixed, count_del_fixed) = count_adv_del_fixed( ic )
+  #ic.count_fixed_adv = count_adv_fixed
+  #ic.count_fixed_del = count_del_fixed
+  (ic.count_fixed_adv, ic.count_fixed_del) = count_adv_del_fixed( ic )
+  println("count_fixed_del: ",ic.count_fixed_del)
+  println("count_fixed_adv: ",ic.count_fixed_adv)
   #print_summary( ic )
   ic
 end

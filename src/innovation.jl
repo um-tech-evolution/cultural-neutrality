@@ -10,7 +10,7 @@ type innovation_type
   identifier::Int64   # integer for this innovation, not sure if this is needed
   start_gen::Int64    # the generation (time step) when the innovation was generated
   final_gen::Int64    # the generation when the innovation went extinct.  Should be zero while innovation is evolving
-  selection_coefficient::Float64    # The selection coefficient of the innovation (allele)
+  fitness_coefficient::Float64    # The selection coefficient of the innovation (allele)
   sum_counts::Int64   # the current accumulated sum of the counts per generation for infinite sites
   sum_heteroz::Float64  # the current accumulated sum of heterozygosities for infinite sites
   history::Vector{Int64}   # history[i] = number of copies in the (i-1)th generation after start_gen
@@ -19,9 +19,9 @@ end
 @doc """ function innovation() 
   Constructor for an innovation object.
 """
-function innovation( id::Int64, N::Int64, start_gen::Int64, selection_coef::Float64=1.0 )
+function innovation( id::Int64, N::Int64, start_gen::Int64, fitness_coef::Float64=1.0 )
   initial_heteroz = 1.0 - watterson_homozygosity([N-1,1])
-  return innovation_type( id, start_gen, 0, selection_coef, 1, initial_heteroz, Int64[1] )
+  return innovation_type( id, start_gen, 0, fitness_coef, 1, initial_heteroz, Int64[1] )
 end
 
 function iupdate!( innov::innovation_type, N::Int64, generation::Int64, new_allele_freq::Int64 )

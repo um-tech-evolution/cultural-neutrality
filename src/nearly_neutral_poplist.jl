@@ -139,7 +139,7 @@ function dfe_neutral( x::Int64 )
   return 1.0   # flat fitness for no selection
 end
 
-@doc """function dfe_neutral( x::Int64; s::Float64=0.0 )
+@doc """function dfe_fixed( )
 """
 function dfe_fixed( x::Int64; s::Float64=0.0 )
   return 1.0 + s   # fitness corresponding to selection coefficient s
