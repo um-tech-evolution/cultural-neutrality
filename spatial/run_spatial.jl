@@ -1,4 +1,7 @@
-
+#=
+Recommended command line to run:
+>  julia -L SpatialEvolution.jl run_spatial.jl configs/example1
+=#
 type spatial_result_type
   N::Int64   # meta-population size
   num_subpops::Int64   # number of subpopulations

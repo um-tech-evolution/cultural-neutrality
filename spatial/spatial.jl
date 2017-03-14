@@ -79,7 +79,11 @@ function spatial_simulation( N::Int64, num_subpops::Int64, mu::Float64, copy_err
       end
       subpops[j] = propsel( subpops[j], n, variant_table )
       #println("subpops[",j,"]: ",map(x->variant_table[x].fitness,subpops[j] ))
-      horiz_transfer_circular!( N, num_subpops, num_emmigrants, subpops, variant_table )
+      if g%2==0
+        horiz_transfer_circular!( N, num_subpops, num_emmigrants, subpops, variant_table, forward=true )
+      else
+        horiz_transfer_circular!( N, num_subpops, num_emmigrants, subpops, variant_table, forward=false )
+      end
     end
     Base.push!(pop_list,deepcopy(subpops))
     #print_pop(STDOUT,subpops,variant_table)
@@ -227,6 +231,7 @@ end
 function horiz_transfer_circular!( N::Int64, m::Int64, num_emmigrants::Int64, subpops::PopList, variant_table::Dict{Int64,variant_type};
      forward::Bool=true, neg_select::Bool=true )
   n = Int(floor(N/m))    # size of subpopulations
+  #println("horiz_transfer_circular! forward: ",forward)
   emmigrants = PopList()
   for j = 1:m
     Base.push!( emmigrants, propsel( subpops[j], num_emmigrants, variant_table ) )
