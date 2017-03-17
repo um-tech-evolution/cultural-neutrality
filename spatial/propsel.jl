@@ -1,21 +1,5 @@
 #using DataStructures
 export propsel, propsel!, reverse_propsel
-#=
-typealias Population Array{Int64,1}
-typealias PopList Array{Population,1}
-type variant_type
-  parent::Int64   # The variant that gave rise to this variant
-  innovation::Int64   # The innovation that gave rise to this variant
-  fitness::Float64    # The fitness of this variant
-  subpop_index::Int64  # index of the containing subpopulation
-  attributes::Vector{Float64}   # attributes of the variant
-end
-
-type subpop_type
-  fitness_inc::Float64
-  ideal::Vector{Float64}   # Ideal values for attributes in the environment of this subpop
-end
-=#
 
 @doc """ function propsel()
 Apply proportional selection to Population pop using fitness, 
@@ -106,6 +90,7 @@ n  must be less than N/2.
 """
 function reverse_propsel( pop::Population, n::Int64, variant_table::Dict{Int64,variant_type} )
   N = length(pop)
+  #println("reverse_propsel N: ",N,"  n: ",n)
   if n > Int(ceil(N/2))
     error("n  (number selected) is greater than N/2 in reverse_propsel!")
   end

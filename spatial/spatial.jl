@@ -1,26 +1,6 @@
 # Spatial structure simulation with horizontal transfer
 export spatial_simulation, fitness
 
-#=  has been moved to types.jl
-using Distributions
-typealias Population Array{Int64,1}
-typealias PopList Array{Population,1}
-
-type variant_type
-  parent::Int64   # The variant that gave rise to this variant
-  innovation::Int64   # The innovation that gave rise to this variant
-  fitness::Float64    # The fitness of this variant
-  subpop_index::Int64  # index of the containing subpopulation
-  attributes::Vector{Float64}   # attributes of the variant
-end
-
-type subpop_type
-  simtype::Int64
-  fitness_inc::Float64
-  ideal::Vector{Float64}   # Ideal values for attributes in the environment of this subpop
-end
-=#
-
 empty_variant = variant_type(-1,-1,0.0,0,Vector{Float64}())
 #vtbl = Dict{Int64,variant_type}()
 
@@ -30,7 +10,6 @@ empty_variant = variant_type(-1,-1,0.0,0,Vector{Float64}())
     N     MetaPopulation size
     m     number of subpopulations   # for now, subpopulation size = N/m
     mu    innovation probability
-    copy_err_prob    copy error probability
     ngens number of generations
     num_emmigrants   number of emmigrants in horizontal transfer
     num_attributes   number of quantitative attributes of a variant
@@ -40,49 +19,63 @@ empty_variant = variant_type(-1,-1,0.0,0,Vector{Float64}())
     variant_table Keeps track fitnesses and variant parent and innovation ancestor
     quantitative==true means individuals have quantitative attributes, fitness computed by distance from ideal
     forward==true  means that horizontal transfer is done in a forward circular fashion
+    extreme==true  means that horizontal transfer is done in a forward circular fashion
     neg_select==true  means that reverse proportional selection is used to select individuals to delete in horiz trans
 """
-function spatial_simulation( N::Int64, num_subpops::Int64, mu::Float64, copy_err_prob::Float64, ngens::Int64, burn_in::Float64,
-    num_emmigrants::Int64, num_attributes::Int64, normal_stddev::Float64, copy_dfe::Function, innov_dfe::Function; 
-    #variant_table::Dict{Int64,variant_type};
-    quantitative::Bool=true, forward::Bool=true, neg_select::Bool=true )
+#=
+function spatial_simulation( N::Int64, num_subpops::Int64, mu::Float64, ngens::Int64, burn_in::Float64,
+    num_emmigrants::Int64, num_attributes::Int64, normal_stddev::Float64; 
+    quantitative::Bool=true, forward::Bool=true, neg_select::Bool=true,  
+    horiz_select::Bool=true,
+    extreme_variation::Bool=false,      # Ideal values randomly alternate between a high and a low values
+    circular_variation::Bool=false )    # Vary ideal values in a circular fashion
+=#
+function spatial_simulation( sr::SpatialEvolution.spatial_result_type )
   variant_table = Dict{Int64,variant_type}()
-  println("spatial simulation: quantitative: ",quantitative)
-  subpop_properties = initialize_subpop_properties(num_subpops,num_attributes)
-  #println("subpop_properties: ",subpop_properties)
-  #int_burn_in = Int(round(burn_in*N+50.0))
-  int_burn_in = Int(round(burn_in*N))   # reduce for testing
+  #println("spatial simulation: quantitative: ",quantitative)
+  #println("sim circular_variation: ",sr.circular_variation,"  extreme_variation: ",sr.extreme_variation)
+  if sr.num_env_subpops == 0
+    ideal_properties = initialize_ideal_properties(sr.num_subpops,sr.num_attributes,
+      extreme_variation=sr.extreme_variation, circular_variation=sr.circular_variation)
+  else
+    ideal_properties = initialize_ideal_properties(sr.num_env_subpops,sr.num_attributes,
+      extreme_variation=sr.extreme_variation, circular_variation=sr.circular_variation)
+  end
+  #println("ideal_properties: ",ideal_properties)
+  #int_burn_in = Int(round(sr.burn_in*N+50.0))
+  int_burn_in = Int(round(sr.burn_in*sr.N))   # reduce for testing
   id = Int[1]
-  n = Int(floor(N/num_subpops))    # size of subpopulations
-  println("N: ",N,"  num_subpops: ",num_subpops,"  n: ",n,"  num_attributes: ",num_attributes,"  ngens: ",ngens)
-  # Initialize
-  cumm_means = zeros(Float64,num_subpops)
-  cumm_variances = zeros(Float64,num_subpops)
-  cumm_attr_vars = zeros(Float64,num_subpops)
+  n = Int(floor(sr.N/sr.num_subpops))    # size of subpopulations
+  #println("N: ",sr.N,"  num_subpops: ",sr.num_subpops,"  n: ",n,"  num_attributes: ",sr.num_attributes,"  ngens: ",sr.ngens)
+  cumm_means = zeros(Float64,sr.num_subpops)
+  cumm_variances = zeros(Float64,sr.num_subpops)
+  cumm_attr_vars = zeros(Float64,sr.num_subpops)
   pop_list = Vector{PopList}()
   subpops = PopList()
-  for j = 1:num_subpops
+  for j = 1:sr.num_subpops
     Base.push!( subpops, Population() )
     for i = 1:n
-      Base.push!( subpops[j], new_innovation( id, innov_dfe, j, num_attributes, variant_table, subpop_properties ) )
+      Base.push!( subpops[j], new_innovation( id, 
+          j, sr.num_attributes, variant_table, ideal_properties ) )
     end
     #println("subpops[",j,"]: ",subpops[j] )
   end
   Base.push!(pop_list,deepcopy(subpops))
-  for g = 2:ngens+int_burn_in
+  for g = 2:sr.ngens+int_burn_in
     #println("g: ",g)
-    for j = 1:num_subpops
+    for j = 1:sr.num_subpops
       for i = 1:n
-        cp = copy_parent( pop_list[g-1][j][i], copy_err_prob, id, j, copy_dfe, normal_stddev, variant_table, subpop_properties )
+        cp = copy_parent( pop_list[g-1][j][i], id, j, sr.mu, 
+          sr.normal_stddev, variant_table, ideal_properties )
         #println("j: ",j,"  i: ",i,"  pl: ",pop_list[g-1][j][i],"  cp: ",cp)
         subpops[j][i] = cp
       end
       subpops[j] = propsel( subpops[j], n, variant_table )
       #println("subpops[",j,"]: ",map(x->variant_table[x].fitness,subpops[j] ))
       if g%2==0
-        horiz_transfer_circular!( N, num_subpops, num_emmigrants, subpops, variant_table, forward=true )
+        horiz_transfer_circular!( sr.N, sr.num_subpops, sr.ne, subpops, variant_table, forward=true, neg_select=sr.horiz_select, emmigrant_select=sr.horiz_select )
       else
-        horiz_transfer_circular!( N, num_subpops, num_emmigrants, subpops, variant_table, forward=false )
+        horiz_transfer_circular!( sr.N, sr.num_subpops, sr.ne, subpops, variant_table, forward=false, neg_select=sr.horiz_select, emmigrant_select=sr.horiz_select )
       end
     end
     Base.push!(pop_list,deepcopy(subpops))
@@ -97,19 +90,14 @@ function spatial_simulation( N::Int64, num_subpops::Int64, mu::Float64, copy_err
       #println("cumm_variances: ",cumm_variances)
     end
   end
-  cumm_means /= ngens
-  cumm_variances /= ngens
-  cumm_attr_vars /= ngens
-  println("cumm_means: ",cumm_means)
-  println("cumm_variances: ",cumm_variances)
-  println("cumm_attr_vars: ",cumm_attr_vars)
-  #=
-  println("pop_list: ")
-  for i = int_burn_in+1:ngens+int_burn_in
-    println(pop_list[i])
-  end
-  =#
-  return mean(cumm_means), mean(cumm_variances), mean(cumm_attr_vars)
+  cumm_means /= sr.ngens
+  cumm_variances /= sr.ngens
+  cumm_attr_vars /= sr.ngens
+  #println("fitness mean: ",mean(cumm_means),"  variance: ",mean(cumm_variances),"  attribute_variance: ",mean(cumm_attr_vars))
+  sr.fitness_mean = mean(cumm_means)
+  sr.fitness_variance = mean(cumm_variances)
+  sr.attribute_variance = mean(cumm_attr_vars)
+  return sr
 end
 
 function fitness( v::Int64, innov::Int64, dfe::Function, subpop_index::Int64, 
@@ -142,18 +130,16 @@ function fitness( attributes::Vector{Float64}, ideal::Vector{Float64} )
   return 1.0-sum/length(attributes)
 end
 
-function new_innovation( id::Vector{Int64}, dfe::Function, subpop_index::Int64, num_attributes::Int64,
-    variant_table::Dict{Int64,variant_type}, subpop_properties; quantitative::Bool=true )
+function new_innovation( id::Vector{Int64}, 
+    #dfe::Function, 
+    subpop_index::Int64, num_attributes::Int64,
+    variant_table::Dict{Int64,variant_type}, ideal_properties; quantitative::Bool=true )
   i = id[1]
   if quantitative
     #println("new innovation i: ",i,"  subpop_index:",subpop_index,"  num_attributes: ",num_attributes )
     variant_table[i] = variant_type( i, i, 0.0, subpop_index, rand(num_attributes) )
     #println("variant_table[i]: ",variant_table[i])
-    variant_table[i].fitness = fitness( variant_table[i].attributes, subpop_properties[subpop_index].ideal )  
-  else
-    #println("new innovation i: ",i,"  dfe: ",dfe)
-    fit = fitness( i, i, dfe, subpop_index, variant_table )
-    #println("i: ",i,"  fit: ",fit)
+    variant_table[i].fitness = fitness( variant_table[i].attributes, ideal_properties[subpop_index].ideal )  
   end
   id[1] += 1
   i
@@ -162,38 +148,35 @@ end
 @doc """  copy_parent()
   Note that the function cdfe produces an incremental change in fitness rather than a new fitness.
 """
-function copy_parent( v::Int64, copy_err_prob::Float64, id::Vector{Int64}, subpop_index::Int64, cdfe::Function, 
+function copy_parent( v::Int64, id::Vector{Int64}, subpop_index::Int64, mu::Float64,
+    #cdfe::Function, 
     normal_stddev::Float64, variant_table::Dict{Int64,SpatialEvolution.variant_type},
-    subpop_properties::Vector{SpatialEvolution.subpop_type}; quantitative::Bool=true )
-  if quantitative   # temporary fix
-    copy_err_prob = 1.0
-  end
-  if rand() < copy_err_prob
-    i = id[1]
-    vt = variant_table[v]
-    if quantitative  # spatial structure by deviation of attributes from ideal
-      vt.attributes = mutate_attributes( vt.attributes, normal_stddev )
-      new_fit = fitness( vt.attributes, subpop_properties[subpop_index].ideal )
-      #=
-      distance = 0.0
-      println("length(vt.attributes): ",length(vt.attributes),"  length(ideal): ",length(subpop_properties[subpop_index].ideal))
-      for i = 1:length(vt.attributes)
-        distance += abs(vt.attributes[i] - subpop_properties[subpop_index].ideal[i])
-      end
-      new_fit = 1.0-distance/length(vt.attributes)
-      =#
-    else   # spatial structure by fitness increment
-      ffit = cdfe()
-      new_fit = vt.fitness + ffit
+    ideal_properties::Vector{SpatialEvolution.ideal_type}; quantitative::Bool=true )
+  i = id[1]
+  vt = variant_table[v]
+  if quantitative  # spatial structure by deviation of attributes from ideal
+    vt.attributes = mutate_attributes( vt.attributes, normal_stddev )
+    if rand() < mu
+      innovate_attribute( vt.attributes, subpop_index, ideal_properties )
     end
-    #println("copy_parent i: ",i,"  quantitative: ",quantitative,"  new_fit: ",new_fit)
-    variant_table[i] = variant_type(v,vt.innovation,new_fit,vt.subpop_index,vt.attributes)
-    #println("v: ",v,"  i: ",i,"  new_fit: ",new_fit,"  vtbl[i]: ",variant_table[i].fitness)
-    id[1] += 1
-    return i
-  else
-    return v
+    new_fit = fitness( vt.attributes, ideal_properties[subpop_index].ideal )
+    #=
+    distance = 0.0
+    println("length(vt.attributes): ",length(vt.attributes),"  length(ideal): ",length(ideal_properties[subpop_index].ideal))
+    for i = 1:length(vt.attributes)
+      distance += abs(vt.attributes[i] - ideal_properties[subpop_index].ideal[i])
+    end
+    new_fit = 1.0-distance/length(vt.attributes)
+    =#
+  else   # spatial structure by fitness increment
+    ffit = cdfe()
+    new_fit = vt.fitness + ffit
   end
+  #println("copy_parent i: ",i,"  quantitative: ",quantitative,"  new_fit: ",new_fit)
+  variant_table[i] = variant_type(v,vt.innovation,new_fit,vt.subpop_index,vt.attributes)
+  #println("v: ",v,"  i: ",i,"  new_fit: ",new_fit,"  vtbl[i]: ",variant_table[i].fitness)
+  id[1] += 1
+  return i
 end  
 
 function mutate_attributes( attributes::Vector{Float64}, normal_stddev::Float64 )
@@ -204,22 +187,68 @@ function mutate_attributes( attributes::Vector{Float64}, normal_stddev::Float64 
   return attributes
 end
 
-function initialize_subpop_properties( num_subpops::Int64, num_attributes::Int64) 
-    #subpop_properties::Vector{subpop_type} )
-  fit_inc = 0.1
-  subpop_properties = [ subpop_type( fit_inc, zeros(Float64,num_attributes) ) for j = 1:num_subpops ]
-  min_value = 0.45
-  max_value = 0.55
-  for j = 1:num_subpops
-    for k = 1:num_attributes
-      if min_value != max_value
-        subpop_properties[j].ideal[k] = min_value+rand()*(max_value-min_value)
-      else
-        subpop_properties[j].ideal[k] = min_value
+function innovate_attribute( attributes::Vector{Float64}, subpop_index::Int64, ideal_properties::Vector{SpatialEvolution.ideal_type} )
+  j = rand(1:length(attributes))   # Choose a random attribute
+  #println("j: ",j,"  attribute: ",attributes[j],"  ideal: ",ideal_properties[subpop_index].ideal[j])
+  attributes[j] += rand()*abs(attributes[j] - ideal_properties[subpop_index].ideal[j])*(ideal_properties[subpop_index].ideal[j]-attributes[j])
+  #println("j: ",j,"  attribute: ",attributes[j],"  ideal: ",ideal_properties[subpop_index].ideal[j])
+end 
+
+function initialize_ideal_properties( num_subpops::Int64, num_attributes::Int64; circular_variation::Bool=false, extreme_variation::Bool=false ) 
+  println("init circular_variation: num_subpops: ",num_subpops,"  circ_var: ",circular_variation,"  extreme_var: ",extreme_variation)
+  ideal_properties = [ ideal_type( zeros(Float64,num_attributes) ) for j = 1:num_subpops ]
+  if !circular_variation && !extreme_variation  # random variation---no relationship to subpop number
+    #println("init circular_variation: ",circular_variation,"  extreme_variation: ",extreme_variation)
+    min_value = 0.45
+    max_value = 0.55
+    for j = 1:num_subpops
+      for k = 1:num_attributes
+        if min_value != max_value
+          ideal_properties[j].ideal[k] = min_value+rand()*(max_value-min_value)
+        else
+          ideal_properties[j].ideal[k] = min_value
+        end
       end
     end
+  elseif circular_variation && !extreme_variation
+    # TODO:  move these parameters to the configuration file
+    low_value = 0.2
+    high_value = 0.8
+    range = 0.2
+    increment = 2.0*(high_value-low_value)/num_subpops
+    mid = Int(floor(num_subpops/2))
+    for j = 1:mid
+      for k = 1:num_attributes
+        ideal_properties[j].ideal[k] = low_value+increment*(j-1)+(rand()*range-0.5*range)
+      end
+    end
+    for j = (mid+1):num_subpops
+      for k = 1:num_attributes
+        ideal_properties[j].ideal[k] = high_value-increment*(j-mid-1)+(rand()*range-0.5*range)
+      end
+    end
+  elseif !circular_variation && extreme_variation  # randomly choose between low_value and high_value
+    # TODO:  move these parameters to the configuration file
+    # Values of 3/15
+    #low_value = 0.1
+    #high_value = 0.9
+    #range = 0.1
+    # values of 3/16
+    low_value = 0.25
+    high_value = 0.75
+    range = 0.02
+    for j = 1:num_subpops
+      for k = 1:num_attributes
+        if rand() < 0.5
+          ideal_properties[j].ideal[k] = low_value+(rand()*range-0.5*range)
+        else 
+          ideal_properties[j].ideal[k] = high_value+(rand()*range-0.5*range)
+        end
+      end
+      #println("j: ",j,"  ideal: ",ideal_properties[j].ideal)
+    end
   end
-  return subpop_properties
+  return ideal_properties
 end  
 
 @doc """ horiz_transfer_circular!()
@@ -229,12 +258,16 @@ end
   subpops is modified by this function (as a side effect)
 """
 function horiz_transfer_circular!( N::Int64, m::Int64, num_emmigrants::Int64, subpops::PopList, variant_table::Dict{Int64,variant_type};
-     forward::Bool=true, neg_select::Bool=true )
+     forward::Bool=true, neg_select::Bool=true, emmigrant_select::Bool=true )
   n = Int(floor(N/m))    # size of subpopulations
   #println("horiz_transfer_circular! forward: ",forward)
   emmigrants = PopList()
   for j = 1:m
-    Base.push!( emmigrants, propsel( subpops[j], num_emmigrants, variant_table ) )
+    if emmigrant_select
+      Base.push!( emmigrants, propsel( subpops[j], num_emmigrants, variant_table ) )
+    else
+      Base.push!( emmigrants, subpops[j][1:num_emmigrants] )   # Neutral
+    end
   end
   for j = 1:m
     #println("j: ",j,"  j%m+1: ",j%m+1,"  (j+m-2)%m+1: ",(j+m-2)%m+1)
@@ -298,9 +331,9 @@ end
  
 function init()
   global vtbl = Dict{Int64,variant_type}()
-  global subpop_properties = subpop_type[ subpop_type(0.1,zeros(Float64,m)) ]
-  global idfe() = 1.0+rand(Distributions.Gamma(1.0,0.1))
-  global cdfe() = -rand(Distributions.Gamma(0.2,0.001))
+  global ideal_properties = ideal_type[ ideal_type(0.1,zeros(Float64,m)) ]
+  #global idfe() = 1.0+rand(Distributions.Gamma(1.0,0.1))
+  #global cdfe() = -rand(Distributions.Gamma(0.2,0.001))
   global N = 20
   global m = 4
   global mu = 0.2
@@ -309,4 +342,4 @@ function init()
   global ngens = 4
 end  
 # Sample call to main function
-# spatial_simulation( N, m, mu, cperr, ngens, ne, cdfe, idfe, vtbl, subpop_properties )
+# spatial_simulation( N, m, mu, cperr, ngens, ne, cdfe, idfe, vtbl, ideal_properties )
