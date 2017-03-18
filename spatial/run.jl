@@ -11,6 +11,9 @@ function run_trials( simname::AbstractString )
     for ne in ne_list
       for extreme_variation in extreme_variation_list
         for num_env_subpops in num_env_subpops_list
+          if num_env_subpops > 0 && num_env_subpops < maximum(num_subpops_list)
+            error("num_env_subpops must be less than the maximum of num_subpops_list")
+          end
           sr = SpatialEvolution.spatial_result(N,num_subpops,num_env_subpops,ne,num_attributes, mu, ngens, burn_in,
              horiz_select, circular_variation, extreme_variation, normal_stddev )
           Base.push!(sr_list_run, sr )
@@ -21,7 +24,7 @@ function run_trials( simname::AbstractString )
     end
   end
   println("===================================")
-  sr_list_result = map(spatial_simulation, sr_list_run )
+  sr_list_result = pmap(spatial_simulation, sr_list_run )
   trial = 1
   writeheader( stream, num_subpops_list, sr )
   writeheader( STDOUT, num_subpops_list, sr )

@@ -73,7 +73,7 @@ function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_r
     "# $(string(Dates.today()))",
     "# N=$(sr.N)",
     "# num_subpops_list=$(num_subpops_list)",
-    "# num_attributes=$(sr.num_attributes)",
+    #"# num_attributes=$(sr.num_attributes)",
     "# mu=$(sr.mu)",
     "# horiz_select=$(sr.horiz_select)",
     #"# num_emmigrants=$(sr.ne)",
@@ -89,6 +89,7 @@ function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_r
     "num_emigrants",
     "ext_variation",
     "num_env_subpops",
+    "num_attributes",
     "mean_fitness",
     "variance_fitness",
     "attribute_variance"]
@@ -101,6 +102,7 @@ function writerow( stream::IO, trial::Int64, sr::spatial_result_type )
           sr.ne,
           sr.extreme_variation,
           sr.num_env_subpops,
+          sr.num_attributes,
           sr.fitness_mean,
           sr.fitness_variance,
           sr.attribute_variance]
