@@ -51,7 +51,7 @@ function run_trials( simname::AbstractString )
   stream = open("$(simname).csv","w")
   println("stream: ",stream)
   println("stddev: ",normal_stddev())
-  sr = SpatialEvolution.spatial_result(N,num_subpops_list[1],num_env_subpops,ne_list[1],num_attributes, mu, ngens, horiz_select, circular_variation, extreme_variation_list[1], normal_stddev() )
+  sr = SpatialEvolution.spatial_result(N,num_subpops_list[1],num_env_subpops_list[1],ne_list[1],num_attributes, mu, ngens, horiz_select, circular_variation, extreme_variation_list[1], normal_stddev() )
   writeheader( stream, num_subpops_list, sr )
   trial = 1
   for num_subpops in num_subpops_list
@@ -88,6 +88,7 @@ function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_r
     "subpop_size",
     "num_emigrants",
     "ext_variation",
+    "num_env_subpops",
     "mean_fitness",
     "variance_fitness",
     "attribute_variance"]
@@ -99,6 +100,7 @@ function writerow( stream::IO, trial::Int64, sr::spatial_result_type )
           Int(ceil(sr.N/sr.num_subpops)),
           sr.ne,
           sr.extreme_variation,
+          sr.num_env_subpops,
           sr.fitness_mean,
           sr.fitness_variance,
           sr.attribute_variance]

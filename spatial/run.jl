@@ -3,18 +3,20 @@ using SpatialEvolution
 function run_trials( simname::AbstractString ) 
   stream = open("$(simname).csv","w")
   println("stream: ",stream)
-  sr = SpatialEvolution.spatial_result(N,num_subpops_list[1],num_env_subpops,ne_list[1],num_attributes, mu, ngens, burn_in,
+  sr = SpatialEvolution.spatial_result(N,num_subpops_list[1],num_env_subpops_list[1],ne_list[1],num_attributes, mu, ngens, burn_in,
       horiz_select, circular_variation, extreme_variation_list[1], normal_stddev )
   sr_list_run = SpatialEvolution.spatial_result_type[]
   trial=1
   for num_subpops in num_subpops_list
     for ne in ne_list
       for extreme_variation in extreme_variation_list
-        sr = SpatialEvolution.spatial_result(N,num_subpops,num_env_subpops,ne,num_attributes, mu, ngens, burn_in,
-            horiz_select, circular_variation, extreme_variation, normal_stddev )
-        Base.push!(sr_list_run, sr )
-        #println("= = = = = = = =")
-        #writerow(STDOUT,trial,sr)
+        for num_env_subpops in num_env_subpops_list
+          sr = SpatialEvolution.spatial_result(N,num_subpops,num_env_subpops,ne,num_attributes, mu, ngens, burn_in,
+             horiz_select, circular_variation, extreme_variation, normal_stddev )
+          Base.push!(sr_list_run, sr )
+          #println("= = = = = = = =")
+          #writerow(STDOUT,trial,sr)
+        end
       end
     end
   end
