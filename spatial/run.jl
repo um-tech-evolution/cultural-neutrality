@@ -24,7 +24,7 @@ function run_trials( simname::AbstractString )
     end
   end
   println("===================================")
-  sr_list_result = pmap(spatial_simulation, sr_list_run )
+  sr_list_result = map(spatial_simulation, sr_list_run )
   trial = 1
   writeheader( stream, num_subpops_list, sr )
   writeheader( STDOUT, num_subpops_list, sr )

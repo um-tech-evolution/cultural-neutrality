@@ -71,13 +71,24 @@ function spatial_simulation( sr::SpatialEvolution.spatial_result_type )
         subpops[j][i] = cp
       end
       subpops[j] = propsel( subpops[j], n, variant_table )
-      #println("subpops[",j,"]: ",map(x->variant_table[x].fitness,subpops[j] ))
-      if g%2==0
-        horiz_transfer_circular!( sr.N, sr.num_subpops, sr.ne, subpops, variant_table, forward=true, neg_select=sr.horiz_select, emmigrant_select=sr.horiz_select )
-      else
-        horiz_transfer_circular!( sr.N, sr.num_subpops, sr.ne, subpops, variant_table, forward=false, neg_select=sr.horiz_select, emmigrant_select=sr.horiz_select )
-      end
     end
+    #=
+    for j = 1:sr.num_subpops
+      println("B subpops[",j,"]: ",subpops[j],"  fitnesses: ",map(x->variant_table[x].fitness,subpops[j] ))
+    end
+    =#
+    if g%2==0
+      horiz_transfer_circular!( sr.N, sr.num_subpops, sr.ne, subpops, id, variant_table, ideal_properties,
+          forward=true, neg_select=sr.horiz_select, emmigrant_select=sr.horiz_select )
+    else
+      horiz_transfer_circular!( sr.N, sr.num_subpops, sr.ne, subpops, id, variant_table, ideal_properties,
+          forward=false, neg_select=sr.horiz_select, emmigrant_select=sr.horiz_select )
+    end
+    #=
+    for j = 1:sr.num_subpops
+      println("A subpops[",j,"]: ",subpops[j],"  fitnesses: ",map(x->variant_table[x].fitness,subpops[j] ))
+    end
+    =#
     Base.push!(pop_list,deepcopy(subpops))
     #print_pop(STDOUT,subpops,variant_table)
     if g > int_burn_in
@@ -127,11 +138,11 @@ function fitness( attributes::Vector{Float64}, ideal::Vector{Float64} )
   for k = 1:length(attributes)
     sum += abs( attributes[k] - ideal[k] )
   end
+  #println("fitness: attributes: ",attributes,"  ideal: ",ideal," fit: ",1.0-sum/length(attributes))
   return 1.0-sum/length(attributes)
 end
 
 function new_innovation( id::Vector{Int64}, 
-    #dfe::Function, 
     subpop_index::Int64, num_attributes::Int64,
     variant_table::Dict{Int64,variant_type}, ideal_properties; quantitative::Bool=true )
   i = id[1]
@@ -149,7 +160,6 @@ end
   Note that the function cdfe produces an incremental change in fitness rather than a new fitness.
 """
 function copy_parent( v::Int64, id::Vector{Int64}, subpop_index::Int64, mu::Float64,
-    #cdfe::Function, 
     normal_stddev::Float64, variant_table::Dict{Int64,SpatialEvolution.variant_type},
     ideal_properties::Vector{SpatialEvolution.ideal_type}; quantitative::Bool=true )
   i = id[1]
@@ -159,6 +169,7 @@ function copy_parent( v::Int64, id::Vector{Int64}, subpop_index::Int64, mu::Floa
     if rand() < mu
       innovate_attribute( vt.attributes, subpop_index, ideal_properties )
     end
+    #println("copy_parent v: ",v,"  subpop_index: ",subpop_index)
     new_fit = fitness( vt.attributes, ideal_properties[subpop_index].ideal )
     #=
     distance = 0.0
@@ -195,7 +206,7 @@ function innovate_attribute( attributes::Vector{Float64}, subpop_index::Int64, i
 end 
 
 function initialize_ideal_properties( num_subpops::Int64, num_attributes::Int64; circular_variation::Bool=false, extreme_variation::Bool=false ) 
-  println("init circular_variation: num_subpops: ",num_subpops,"  circ_var: ",circular_variation,"  extreme_var: ",extreme_variation)
+  #println("init circular_variation: num_subpops: ",num_subpops,"  circ_var: ",circular_variation,"  extreme_var: ",extreme_variation)
   ideal_properties = [ ideal_type( zeros(Float64,num_attributes) ) for j = 1:num_subpops ]
   if !circular_variation && !extreme_variation  # random variation---no relationship to subpop number
     #println("init circular_variation: ",circular_variation,"  extreme_variation: ",extreme_variation)
@@ -234,9 +245,11 @@ function initialize_ideal_properties( num_subpops::Int64, num_attributes::Int64;
     #high_value = 0.9
     #range = 0.1
     # values of 3/16
+    #range = 0.02
+    # values of 3/20
     low_value = 0.25
     high_value = 0.75
-    range = 0.02
+    range = 0.10
     for j = 1:num_subpops
       for k = 1:num_attributes
         if rand() < 0.5
@@ -257,10 +270,12 @@ end
   Elements to be replaced can be random or selected by reverse proportional selection depending on the flag neg_select.
   subpops is modified by this function (as a side effect)
 """
-function horiz_transfer_circular!( N::Int64, m::Int64, num_emmigrants::Int64, subpops::PopList, variant_table::Dict{Int64,variant_type};
+function horiz_transfer_circular!( N::Int64, m::Int64, num_emmigrants::Int64, subpops::PopList, id::Vector{Int64}, 
+    variant_table::Dict{Int64,variant_type}, ideal_properties::Vector{SpatialEvolution.ideal_type};
      forward::Bool=true, neg_select::Bool=true, emmigrant_select::Bool=true )
   n = Int(floor(N/m))    # size of subpopulations
-  #println("horiz_transfer_circular! forward: ",forward)
+  num_attributes = length(variant_table[subpops[1][1]].attributes)
+  #println("horiz_transfer_circular! forward: ",forward,"  num_attributes: ",num_attributes)
   emmigrants = PopList()
   for j = 1:m
     if emmigrant_select
@@ -269,18 +284,38 @@ function horiz_transfer_circular!( N::Int64, m::Int64, num_emmigrants::Int64, su
       Base.push!( emmigrants, subpops[j][1:num_emmigrants] )   # Neutral
     end
   end
+  new_emmigrants = Population[ Population() for j = 1:m ]
   for j = 1:m
+    #println("j: ",j,"  j%m+1: ",j%m+1,"  (j+m-2)%m+1: ",(j+m-2)%m+1)
+    if forward
+      k = (j+m-2)%m+1
+    else
+      k = j%m+1
+    end
+    #println("j: ",j,"  j%m+1: ",j%m+1,"  (j+m-2)%m+1: ",(j+m-2)%m+1,"  k: ",k)
+    # Create new variants for the emmigrants in the new subpop
+    for e in emmigrants[k]
+      i = id[1]
+      #println("e: ",e,"  i: ",i)
+      #println("new emmigrant i: ",i,"  subpop_index:",k,"  num_attributes: ",num_attributes )
+      variant_table[i] = deepcopy(variant_table[e])
+      variant_table[i].fitness = fitness( variant_table[i].attributes, ideal_properties[j].ideal )  
+      #variant_table[i] = variant_type( i, i, 0.0, j, emmigrants[j].attributes  )
+      #println("variant_table[",e,"]: ",variant_table[e])
+      #println("variant_table[",i,"]: ",variant_table[i])
+      Base.push!( new_emmigrants[j], i )
+      id[1] += 1
+    end
+  end
+  for j = 1:m
+    pop_after_deletion = Population[]
     #println("j: ",j,"  j%m+1: ",j%m+1,"  (j+m-2)%m+1: ",(j+m-2)%m+1)
     if neg_select  # use reverse proportional selection to delete elements by negative fitness
       pop_after_deletion = reverse_propsel(subpops[j],num_emmigrants,variant_table)
     else  # delete random elements to delete
       pop_after_deletion = subpops[j][1:(n-num_emmigrants)]
     end
-    if forward
-      subpops[j] = append!( pop_after_deletion, emmigrants[(j+m-2)%m+1] )
-    else
-      subpops[j] = append!( pop_after_deletion, emmigrants[j%m+1] )
-    end
+    subpops[j] = append!( pop_after_deletion, new_emmigrants[j] )
   end
   emmigrants  # perhaps should be the modified subpops
 end
