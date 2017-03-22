@@ -14,16 +14,20 @@ const vtbl = Dict{Int64,variant_type}()
 @everywhere const N = 8        # Meta-population size
 const num_subpops_list = [1,2]
 const normal_stddev = 0.1
-#const num_env_subpops = 4       # number of subpops to use in setting ideals for spatial env variation
-const num_env_subpops_list = [0]       # number of subpops to use in setting ideals for spatial env variation
-const mu = 0.05                 # per-individual innovation rate, not used quantitative
+const mu = 0.05                 # per-individual innovation rate 
 #const ne = 0                    # number emmigrants
 const ne_list = [0,2]                    # number emmigrants
 const num_attributes = 2        # number attributes for quantitative representation
 const ngens = 5       # Generations after burn-in
+#const use_fit_locations=false
 const horiz_select=true
-const circular_variation=false
-#const extreme_variation=true
-const extreme_variation_list=[true]
+const circular_variation=true
+const extreme_variation=false
+#const extreme_variation_list=[true]
 const burn_in= 0.1    # generations of burn_in as a multiple of N
+const use_fit_locations_list=[false,true]
+const ideal_max = 0.8
+const ideal_min = 0.2
+const ideal_range = 0.1
+
 
