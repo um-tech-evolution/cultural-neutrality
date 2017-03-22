@@ -11,8 +11,9 @@ function run_trials( simname::AbstractString )
   for num_subpops in num_subpops_list
     for ne in ne_list
       for use_fit_locations in use_fit_locations_list
-        for extreme_variation in extreme_variation_list
-          circular_variation = !extreme_variation
+        #for extreme_variation in extreme_variation_list
+        #for horiz_select in horiz_select_list
+          circular_variation = extreme_variation = false
           num_fit_locations = use_fit_locations ? maximum(num_subpops_list) : num_subpops_list[1]
           num_fit_locations = use_fit_locations ? maximum(num_subpops_list) : num_subpops
           #println("num_fit_locations: ",num_fit_locations)
@@ -21,7 +22,7 @@ function run_trials( simname::AbstractString )
           Base.push!(sr_list_run, sr )
           #println("= = = = = = = =")
           #writerow(STDOUT,trial,sr)
-        end
+        #end
       end
     end
   end

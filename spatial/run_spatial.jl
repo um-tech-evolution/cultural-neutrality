@@ -30,27 +30,6 @@ function print_spatial_result( sr::spatial_result_type )
   println("fitness_variance: ", sr.fitness_variance)
   println("attiribute_variance: ", sr.attribute_variance)
 end
-#=  Moved to run.jl
-function run_trials( simname::AbstractString ) 
-  stream = open("$(simname).csv","w")
-  println("stream: ",stream)
-  println("stddev: ",normal_stddev())
-  sr = SpatialEvolution.spatial_result(N,num_subpops_list[1],num_fit_locations_list[1],ne_list[1],num_attributes, mu, ngens, horiz_select, circular_variation, extreme_variation_list[1], normal_stddev() )
-  writeheader( stream, num_subpops_list, sr )
-  trial = 1
-  for num_subpops in num_subpops_list
-    for ne in ne_list
-      for extreme_variation in extreme_variation_list
-        sr = SpatialEvolution.spatial_result(N,num_subpops,num_fit_locations,ne,num_attributes, mu, ngens, horiz_select, circular_variation, extreme_variation, normal_stddev() )
-        run_trial(sr)
-        writerow(stream,trial,sr)
-        print_spatial_result( sr )
-        trial += 1
-      end
-    end
-  end
-end
-=#
 
 function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_result_type )
   param_strings = [
@@ -65,7 +44,11 @@ function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_r
     #"# circular_variation=$(sr.circular_variation)",
     #"# extreme_variation=$(sr.extreme_variation)",
     "# burn_in=$(sr.burn_in)",
-    "# normal_stddev=$(sr.normal_stddev)"]
+    "# normal_stddev=$(sr.normal_stddev)",
+    "# ideal_max=$(sr.ideal_max)",
+    "# ideal_min=$(sr.ideal_min)",
+    "# ideal_range=$(sr.ideal_range)"]
+
   write(stream,join(param_strings,"\n"),"\n")
   heads = [
     "num_subpops",
@@ -76,6 +59,7 @@ function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_r
     "num_attributes",
     "circular_variation",
     "extreme_variation",
+    #"horiz_select",
     "mean_fitness",
     "variance_fitness",
     "attribute_variance"]
@@ -91,6 +75,7 @@ function writerow( stream::IO, trial::Int64, sr::spatial_result_type )
           sr.num_attributes,
           sr.circular_variation,
           sr.extreme_variation,
+          #sr.horiz_select,
           sr.fitness_mean,
           sr.fitness_variance,
           sr.attribute_variance]

@@ -21,6 +21,7 @@ const num_attributes = 2        # number attributes for quantitative representat
 const ngens = 5       # Generations after burn-in
 #const use_fit_locations=false
 const horiz_select=true
+#const horiz_select_list=[false,true]
 const circular_variation=true
 #const extreme_variation=false
 const extreme_variation_list=[false,true]
