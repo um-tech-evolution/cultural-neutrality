@@ -48,8 +48,13 @@ function spatial_simulation( sr::SpatialEvolution.spatial_result_type )
     end
     #println("subpops[",j,"]: ",subpops[j] )
   end
+  previous_variant_id = 1
+  current_variant_id = id[1]
   Base.push!(pop_list,deepcopy(subpops))
   for g = 2:sr.ngens+int_burn_in
+    previous_previous_variant_id = previous_variant_id
+    previous_variant_id = current_variant_id
+    current_variant_id = id[1]
     #println("g: ",g)
     for j = 1:sr.num_subpops
       for i = 1:n
@@ -59,6 +64,7 @@ function spatial_simulation( sr::SpatialEvolution.spatial_result_type )
         #println("j: ",j,"  i: ",i,"  pl: ",pop_list[g-1][j][i],"  cp: ",cp)
         subpops[j][i] = cp
       end
+      #println("g:",g," j:",j,"  ",[(v,variant_table[v].attributes) for v in subpops[j]])
       subpops[j] = propsel( subpops[j], n, variant_table )
     end
     if g%2==0
@@ -79,6 +85,7 @@ function spatial_simulation( sr::SpatialEvolution.spatial_result_type )
       #println("cumm_means: ",cumm_means)
       #println("cumm_variances: ",cumm_variances)
     end
+    clean_up_variant_table(previous_previous_variant_id,previous_variant_id,variant_table)
   end
   cumm_means /= sr.ngens
   cumm_variances /= sr.ngens
@@ -130,6 +137,7 @@ function copy_parent( v::Int64, id::Vector{Int64}, fit_loc_ind::Int64, mu::Float
       innovate_attribute( vt.attributes, fit_loc_ind, fitness_locations )
     end
     #println("copy_parent v: ",v,"  fit_loc_ind: ",fit_loc_ind)
+    #println("copy_parent v: ",v,"  attributes: ",vt.attributes)
     new_fit = fitness( vt.attributes, fitness_locations[fit_loc_ind].ideal )
     #=
     distance = 0.0
@@ -144,7 +152,9 @@ function copy_parent( v::Int64, id::Vector{Int64}, fit_loc_ind::Int64, mu::Float
     new_fit = vt.fitness + ffit
   end
   #println("copy_parent i: ",i,"  quantitative: ",quantitative,"  new_fit: ",new_fit)
-  variant_table[i] = variant_type(v,new_fit,vt.fitness_location,vt.attributes)  # needs to be fixed
+  variant_table[i] = deepcopy(vt)
+  variant_table[i].fitness = new_fit
+  #variant_table[i] = variant_type(v,new_fit,vt.fitness_location,vt.attributes)  # needs to be fixed
   #println("v: ",v,"  i: ",i,"  new_fit: ",new_fit,"  vtbl[i]: ",variant_table[i].fitness)
   id[1] += 1
   return i
@@ -153,7 +163,21 @@ end
 function mutate_attributes( attributes::Vector{Float64}, normal_stddev::Float64 )
   #stddev = normal_stddev()   # Standard deviation of mutational perturbations
   #println("mutate attributes  normal_stddev: ",normal_stddev)
-  attributes = min(1.0,max(0.0,attributes+normal_stddev*randn(length(attributes))))
+  #attributes = min(1.0,max(0.0,attributes+normal_stddev*randn(length(attributes))))
+  for i = 1:length(attributes)
+    #println("B attributes[",i,"]: ",attributes[i])
+    attributes[i] += +normal_stddev*randn()
+    if attributes[i] < 0
+        attributes[i] += 1.0
+        #println("wrapped up: ",attributes[i])
+    end
+    if attributes[i] > 1.0
+        attributes[i] -= 1.0
+        #println("wrapped down: ",attributes[i])
+    end
+    attributes[i] = min(1.0,max(0.0,attributes[i]))
+    #println("A attributes[",i,"]: ",attributes[i])
+  end
   #println("attributes: ",attributes)
   return attributes
 end
@@ -292,12 +316,13 @@ end
 
 function attr_vars( subpops::PopList, variant_table::Dict{Int64,variant_type} )
   num_attributes = length(variant_table[1].attributes)
+  #println("attr_vars: num_attributes: ",num_attributes)
   #=
-  println("attr_vars: num_attributes: ",num_attributes)
   for s in subpops
+    println("subpop: ",s)
     println(s," fitness: ",[variant_table[v].fitness for v in s ],"  variance: ",var([variant_table[v].fitness for v in s ]))
     for j = 1:num_attributes
-      println(j,"  attribute: ",[variant_table[v].attributes[j] for v in s],"  variance: ",var([variant_table[v].attributes[j] for v in s]) )
+      println("attribute[",j,"]: ",[(v,variant_table[v].attributes[j]) for v in s],"  variance: ",var([variant_table[v].attributes[j] for v in s]) )
     end
   end
   =#
@@ -318,6 +343,13 @@ function fit_loc_index(N,num_subpops,num_fit_locs,j,i)
   mult = Int(ceil(num_fit_locs/num_subpops))
   div = Int(ceil(n*num_subpops/num_fit_locs))
   return mult*(j-1) + Int(floor((i-1)/div))+1
+end
+
+function clean_up_variant_table( previous_variant_id::Int64, previous_previous_variant_id::Int64,
+    variant_table::Dict{Int64,variant_type} )
+  for v = previous_previous_variant_id:previous_variant_id-1
+    delete!(variant_table,v)
+  end
 end
  
 function init()

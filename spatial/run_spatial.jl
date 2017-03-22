@@ -62,8 +62,8 @@ function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_r
     "# horiz_select=$(sr.horiz_select)",
     #"# num_emmigrants=$(sr.ne)",
     "# ngens=$(sr.ngens)",
-    "# circular_variation=$(sr.circular_variation)",
-    "# extreme_variation=$(sr.extreme_variation)",
+    #"# circular_variation=$(sr.circular_variation)",
+    #"# extreme_variation=$(sr.extreme_variation)",
     "# burn_in=$(sr.burn_in)",
     "# normal_stddev=$(sr.normal_stddev)"]
   write(stream,join(param_strings,"\n"),"\n")
@@ -74,6 +74,8 @@ function writeheader( stream::IO, num_subpops_list::Vector{Int64}, sr::spatial_r
     "use_fit_locations",
     "num_fit_locations",
     "num_attributes",
+    "circular_variation",
+    "extreme_variation",
     "mean_fitness",
     "variance_fitness",
     "attribute_variance"]
@@ -87,6 +89,8 @@ function writerow( stream::IO, trial::Int64, sr::spatial_result_type )
           sr.use_fit_locations,
           sr.num_fit_locations,
           sr.num_attributes,
+          sr.circular_variation,
+          sr.extreme_variation,
           sr.fitness_mean,
           sr.fitness_variance,
           sr.attribute_variance]
