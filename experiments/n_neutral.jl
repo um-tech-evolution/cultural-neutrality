@@ -1,13 +1,5 @@
 # Front end for src/nearly_neutral_poplist.jl
 include("../src/NeutralCulturalEvolution.jl")
-#=
-include("../src/aliases.jl")
-include("../src/freq_scaled_fitness.jl")
-include("../src/neutral_poplist.jl")
-include("../src/innovation.jl")
-include("../src/innovation_collection.jl")
-include("../src/nearly_neutral_poplist.jl")
-=#
 if length(ARGS) == 0
   #simname = "../experiments/nn_configs/nn_example1"
   simname = "../experiments/configs/nn_example"
@@ -280,15 +272,6 @@ function writeheader(stream::IO, popsize_multiplier_list::Vector{Int64}, N_list:
     "t8",
     "t10"
   ] 
-  #=
-  if tr.nn_simtype == 0  # Neutral
-    mid_heads = []
-  elseif tr.nn_simtype == 1  # Power conformist
-    mid_heads = [ "cprob", "acprob", "cpower", "acpower"]
-  else   
-    mid_heads = []
-  end
-  =#
   line = join(vcat( first_heads, mid_heads, last_heads), ",")
   write(stream, line, "\n")
 end
@@ -333,13 +316,3 @@ if isdefined(:popsize_multiplier_list)
 else
   run_trials( mu_list_flag=mu_list_flag)
 end
-#=
-try
-  run_trials()
-  close(stream)
-except
-  close(stream)
-end
-=#
-
-

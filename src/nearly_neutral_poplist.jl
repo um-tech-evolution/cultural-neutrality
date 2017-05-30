@@ -82,6 +82,7 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
     #println("g:",g,"  length(poplist): ",length(poplist))
     #println("g:",g,"  done: ",done,"  length(ic.active): ",length(ic.active))
   end
+  #println("ic: ",ic)
   if combine
     return [pop_result]
   else

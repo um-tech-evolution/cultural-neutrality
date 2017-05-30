@@ -20,7 +20,7 @@ Returns a infs_result_type object, but also prints relevant information.
 """
 function inf_sites( N::Int64, N_mu::Float64, ngens::Int64; 
     dfe::Function=dfe_neutral, burn_in::Float64=2.0)
-    #ic::innovation_collection=innovation_collection(N,false) )
+    #ic::innovation_collection=innovation_collection(N,false) 
   fitness_table = Dict{Int64,Float64}()
   int_burn_in = Int(round(burn_in*N/N_mu+50.0))
   ic = innovation_collection( N, 1.0 )   # fix_minimum = 1.0 so fixes only if count is N
@@ -51,16 +51,16 @@ function inf_sites( N::Int64, N_mu::Float64, ngens::Int64;
     end
     g += 1
     done = (g > ngens) && length(ic.active) == 0
-    N_sum += N_inf_sites(ic)
+    #N_sum += N_inf_sites(ic)
     #print(" ",N_inf_sites(ic))
   end
-  println("Naverage: ", Float64(N_sum)/ngens )
+  #println("Naverage: ", Float64(N_sum)/ngens )
   #(count_adv_fixed, count_del_fixed) = count_adv_del_fixed( ic )
   #ic.count_fixed_adv = count_adv_fixed
   #ic.count_fixed_del = count_del_fixed
   (ic.count_fixed_adv, ic.count_fixed_del) = count_adv_del_fixed( ic )
-  println("count_fixed_del: ",ic.count_fixed_del)
-  println("count_fixed_adv: ",ic.count_fixed_adv)
+  #println("count_fixed_del: ",ic.count_fixed_del)
+  #println("count_fixed_adv: ",ic.count_fixed_adv)
   #print_summary( ic )
   ic
 end
@@ -83,6 +83,7 @@ end
 
 """ 
 function update_selected( site::Int64, N::Int64, old_allele_freq::Int64, select_coef::Float64 )
+  #println("update selected: site: ",site,"  old allele_freq: ",old_allele_freq)
   p = min(1.0,(select_coef*Float64(old_allele_freq)/N))
   new_allele_freq = rand(Binomial(N,p))
   #println("update_neutral: ",site,"  N: ",N,"  new_allele_freq: ",new_allele_freq)

@@ -21,7 +21,13 @@ function freq_scaled_fitness( pop::Population, w::Vector{Float64}, c::Float64 )
 end
 =#
 @doc """
-Same as previous version except that fitness is stored in a dictionary
+Return a fitness dictionary that reflects power conformist or anti-conformist selection on pop.
+The fitness without conformism is given by the dictionary fitness_table. 
+Fitnesses are rescaled by multiplying by the frequency of the corresponding allele to the power c.
+The parameter c controls the degree of conformity.
+c = 0.0    gives a neutral fitness (the fitness vector w is returned)
+c > 0.0    gives a conformist fitness where common elements are favored
+c < 0.0    gives an anti-conformist fitness where less elements are favored
 """
 function freq_scaled_fitness( pop::Population, c::Float64, fitness_table::Dict{Int64,Float64} )
   frequency = DataStructures.counter(Int64)

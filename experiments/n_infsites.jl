@@ -16,7 +16,7 @@ date_string = "../data/"*Dates.format(now(),"mm_dd_yy")*"/"
 try mkdir(date_string) catch end   # create today's directory with no error if it already exists
 println("date string: ",date_string)
 Ylist = [2,4,6,8,10]
-println("Ylist: ",Ylist)
+#println("Ylist: ",Ylist)
 if !isdefined(:mu_list_flag)
   mu_list_flag=false
 end
@@ -134,8 +134,6 @@ function run_trial( tr::infs_result_type )
     tr.average_fitness_extinct = average_fitness_extinct(ic)
     tr.average_fitness_fixed = average_fitness_fixed(ic)
     tr.average_fitness_all = average_fitness_all(ic)
-    tr.average_innovations_per_gen = average_innovations_per_gen(ic)
-    tr.average_heterozygosity_per_gen = average_heterozygosity_per_gen(ic)
     return tr
   else
     println("nn_simtype ",nn_simtype," not implemented")
@@ -207,8 +205,6 @@ function writerow(stream::IO, trial::Int64, tr::infs_result_type; mu_list_flag::
       Float64(tr.number_fixations)/(tr.number_extinctions+tr.number_fixations),
       tr.average_time_to_extinction,
       tr.average_time_to_fixation,
-      tr.average_innovations_per_gen,
-      tr.average_heterozygosity_per_gen,
       tr.average_fitness_extinct,
       tr.average_fitness_fixed,
       tr.average_fitness_all,
@@ -222,20 +218,3 @@ function writerow(stream::IO, trial::Int64, tr::infs_result_type; mu_list_flag::
 end
 
 run_trials( mu_list_flag )
-#=
-if isdefined(:popsize_multiplier_list)
-  run_trials(popsize_multiplier_list, mu_list_flag=mu_list_flag )
-else
-  run_trials( mu_list_flag=mu_list_flag)
-end
-=#
-#=
-try
-  run_trials()
-  close(stream)
-except
-  close(stream)
-end
-=#
-
-
