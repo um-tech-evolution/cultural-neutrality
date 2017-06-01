@@ -11,17 +11,17 @@
 
 cd ../experiments
 
-julia n_neutral.jl configs/nn_example
+julia n_neutral.jl nn_configs/nn_example
 
-julia n_neutral.jl configs/nn_example3
+julia n_neutral.jl nn_configs/nn_example3
 
 julia n_neutral.jl nn_configs/nn_example1
 
 julia n_neutral.jl nn_configs/nn_example2
 
-julia n_infsites.jl configs/in_example1
+julia n_infsites.jl nn_configs/in_example1
 
-julia n_infsites.jl configs/in_example2
+julia n_infsites.jl nn_configs/in_example2
 
 julia n_infsites.jl nn_configs/nn_het_ratio
 

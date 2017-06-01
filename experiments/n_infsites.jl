@@ -134,6 +134,8 @@ function run_trial( tr::infs_result_type )
     tr.average_fitness_extinct = average_fitness_extinct(ic)
     tr.average_fitness_fixed = average_fitness_fixed(ic)
     tr.average_fitness_all = average_fitness_all(ic)
+    tr.average_innovations_per_gen = average_innovations_per_gen(ic)
+    tr.average_heterozygosity_per_gen = average_heterozygosity_per_gen(ic)
     return tr
   else
     println("nn_simtype ",nn_simtype," not implemented")
@@ -177,11 +179,11 @@ function writeheader(stream::IO, N_list::Vector{Int64},
     "fraction_fixed",
     "ave_extinct_time", 
     "ave_fixed_time", 
-    "ave_innov_count",
-    "ave_heteroz",
     "ave_extinct_selcoef", 
     "ave_fixed_selcoef", 
     "ave_all_selcoef",
+    "ave_innov_count",
+    "ave_heteroz",
   ] 
   line = join(vcat( first_heads, mid_heads, last_heads), ",")
   write(stream, line, "\n")
@@ -208,6 +210,8 @@ function writerow(stream::IO, trial::Int64, tr::infs_result_type; mu_list_flag::
       tr.average_fitness_extinct,
       tr.average_fitness_fixed,
       tr.average_fitness_all,
+      tr.average_innovations_per_gen,
+      tr.average_heterozygosity_per_gen
     ]
   else 
     println("Error:  nn_simtype must be 2 for inf sites.")

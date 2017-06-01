@@ -1,13 +1,38 @@
+export innovation_type, innovation,  
+    innovation_collection, ic_push!, update_innovations!, 
+    print_summary, average_time_to_extinction, average_time_to_fixation, 
+    fixed_fraction, average_fitness_fixed, average_fitness_extinct, average_fitness_all,
+    average_innovations_per_gen, average_heterozygosity_per_gen
+
+
+using Base.Test
+#=
+Stores the properties of an "innovation" (possibly deleterious or advantageous).
+=#
+
+type innovation_type
+  identifier::Int64   # integer for this innovation, not sure if this is needed
+  start_gen::Int64    # the generation (time step) when the innovation was generated
+  final_gen::Int64    # the generation when the innovation went extinct.  Should be zero while innovation is evolving
+  fitness_coefficient::Float64    # The selection coefficient of the innovation (allele)
+  sum_counts::Int64   # the current accumulated sum of the counts per generation for infinite sites
+  sum_heteroz::Float64  # the current accumulated sum of heterozygosities for infinite sites
+  previous_allele_freq::Int64  # Allele frequence of the previous generation
+end
+
+@doc """ function innovation() 
+  Initializes the properties of the innovation.
+"""
+function innovation( id::Int64, N::Int64, start_gen::Int64, fitness_coef::Float64=1.0 )
+  #println("innovation: id: ",id,"  N: ",N,"  start_gen: ",start_gen)
+  initial_heteroz = 1.0 - watterson_homozygosity([N-1,1])
+  return innovation_type( id, start_gen, 0, fitness_coef, 1, initial_heteroz, 1  )
+end
+
 #=
 Stores a collection of innovations.
 Innovations are partitioned into 3 subsets, active, fixed, and extinct.
 =#
-
-export innovation_collection, ic_push!, update_innovations!, ic_update!, make_extinct!, 
-    make_fixed!, print_summary, average_time_to_extinction, average_time_to_fixation, 
-    fixed_fraction, average_fitness_fixed, average_fitness_extinct, average_fitness_all, 
-    #average_innovations_per_gen, average_heterozygosity_per_gen, 
-    fix_test, N_inf_sites, count_adv_del_fixed
 
 type innovation_collection
   N::Int64                # popsize
@@ -16,6 +41,9 @@ type innovation_collection
   fixed::IntSet   # indices of innovations that have fixed
   extinct::IntSet   # indices of innovations that have gone extinct
   fix_minimum::Float64  # minimum fraction of popsize for fixation for infinite alleles
+  sum_counts::Int64   # sum of counts of mutant alleles for infinite sites
+  sum_heteroz::Float64  # sum of heterozygosities for infinite sites
+  sum_generations::Int64  # Total number of generations corresponding to sum_counts and sum_heteroz
   count_fixed_del::Int64  # Number of fixed mutations that are deleterious (fit_coef < 1.0)
   count_fixed_adv::Int64  # Number of fixed mutations that are advantageous (fit_coef > 1.0)
   in_use::Bool      # If false, not used
@@ -24,13 +52,15 @@ end
 # Constructor for a new empty innovation collection
 function innovation_collection( N::Int64, in_use::Bool=true )  
   #innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), 1.0, 0, 0.0, 0,0,0, in_use )
-  innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), 1.0, 0,0, in_use )
+  #innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), 1.0, 0,0, in_use )
+  innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), 1.0, 0, 0.0, 0, 0, 0, in_use )
 end
 
 # Constructor for a new empty innovation collection with a value for fix_minimum
 function innovation_collection( N::Int64, fix_min::Float64, in_use::Bool=true )  
   #innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), fix_min, 0, 0.0, 0,0,0, in_use )
-  innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), fix_min, 0,0, in_use )
+  #innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), fix_min, 0,0, in_use )
+  innovation_collection( N, Dict{Int64,innovation_type}(), IntSet(), IntSet(), IntSet(), fix_min, 0, 0.0, 0,0,0, in_use )
 end
 
 @doc """ ic_push!()
@@ -48,6 +78,7 @@ function ic_push!( innov_collection::innovation_collection, innov::innovation_ty
   else
     Base.push!( innov_collection.extinct, innov.identifier )
   end
+  #println("new innovation: id: ",innov.identifier)
   innov_collection
 end
 
@@ -60,21 +91,42 @@ function fix_test( N::Int64, new_allele_freq::Int64 )
 end
 
 # Update all active innovations, and make some extinct and fixed
+# Called only by the infinite sites model.
 # This version is used only by infsites.jl.
 function update_innovations!( ic::innovation_collection, g::Int64, N::Int64 )
   if !ic.in_use 
     return
   end
   for index in ic.active  # updates sites to the next generation
-    #println("innovation: start gen: ",ic.list[index].start_gen,"  history: ",ic.list[index].history)
+    #println("update innovations: id: ",ic.list[index].identifier,"  start gen: ",ic.list[index].start_gen) 
     #new_allele_freq = update_selected( index, N, ic.list[index].history[end], ic.list[index].fitness_coefficient )
     new_allele_freq = update_selected( index, N, ic.list[index].previous_allele_freq, ic.list[index].fitness_coefficient )
-    #println("new_allele_freq: ",new_allele_freq)
-    ic_update!(ic,index,g,new_allele_freq)
+    #println("prev_allele_freq: ",ic.list[index].previous_allele_freq,"  new_allele_freq: ",new_allele_freq)
+    #ic_update!(ic,index,g,new_allele_freq)
+    #iupdate!( ic.list[index], ic.N, g, new_allele_freq )
+    innov = ic.list[index]
+    if new_allele_freq > 0
+      innov.sum_counts += new_allele_freq
+      innov.sum_heteroz += 1.0 - watterson_homozygosity([N-new_allele_freq, new_allele_freq])
+    end
+    #println("new_allele_freq: ",new_allele_freq,"  sum_counts: ",innov.sum_counts,"  sum_heteroz: ",innov.sum_heteroz)
+    innov.previous_allele_freq = new_allele_freq  # save for the next call to update_selected.
     if new_allele_freq == 0  # extinction
-      make_extinct!(ic,index,g)
-    elseif new_allele_freq >= Int(ceil(ic.fix_minimum*N))  # fixation
-      make_fixed!(ic,index,g)
+      ic.sum_counts += ic.list[index].sum_counts
+      ic.sum_heteroz += ic.list[index].sum_heteroz
+      ic.sum_generations += g - ic.list[index].start_gen
+      Base.pop!( ic.active,index)
+      Base.push!( ic.extinct,index)
+      ic.list[index].final_gen = g
+      #println("extinct index:",index,"  gen:",g,"  startg:",ic.list[index].start_gen)
+    elseif new_allele_freq >= N # fixation
+      ic.sum_counts += ic.list[index].sum_counts
+      ic.sum_heteroz += ic.list[index].sum_heteroz
+      ic.sum_generations += g - ic.list[index].start_gen
+      Base.pop!( ic.active,index)
+      Base.push!( ic.fixed,index)
+      ic.list[index].final_gen = g
+      #println("fixed index:",index,"  gen:",g,"  startg:",ic.list[index].start_gen)
     end
   end
 end
@@ -88,40 +140,20 @@ function update_innovations!( ic::innovation_collection, g::Int64, N::Int64, pop
   end
   for index in ic.active  # updates sites to the next generation
     new_allele_freq = get( popcounter, index, 0 )
-    ic_update!(ic,index,g,new_allele_freq)
+    #ic_update!(ic,index,g,new_allele_freq)
     if new_allele_freq == 0  # extinction
-      make_extinct!(ic,index,g)
+      Base.pop!( ic.active,index)
+      Base.push!( ic.extinct,index)
+      ic.list[index].final_gen = g
+      #make_extinct!(ic,index,g)
     elseif new_allele_freq >= Int(ceil(ic.fix_minimum*N) )  # fixation
-      make_fixed!(ic,index,g)
+      Base.pop!( ic.active,index)
+      Base.push!( ic.fixed,index)
+      ic.list[index].final_gen = g
+      #make_fixed!(ic,index,g)
     end
   end
 end  
-
-# Calls the iupdate! function of innovation on innov_collection.list[index]
-function ic_update!( innov_collection::innovation_collection, index::Int64, generation::Int64, new_allele_freq::Int64 )
-  if !innov_collection.in_use 
-    return
-  end
-  iupdate!( innov_collection.list[index], innov_collection.N, generation, new_allele_freq )
-end
-
-function make_extinct!( innov_collection::innovation_collection, index::Int64, generation::Int64 )
-  if !innov_collection.in_use 
-    return
-  end
-  make_extinct!( innov_collection.list[index], generation )
-  Base.pop!( innov_collection.active,index)
-  Base.push!( innov_collection.extinct,index)
-end
-
-function make_fixed!( innov_collection::innovation_collection, index::Int64, generation::Int64 )
-  if !innov_collection.in_use 
-    return
-  end
-  make_fixed!( innov_collection.list[index], generation )
-  Base.pop!( innov_collection.active,index)
-  Base.push!( innov_collection.fixed,index)
-end
 
 function N_inf_sites( ic::innovation_collection )
   if !ic.in_use 
@@ -160,6 +192,8 @@ function print_summary( ic::innovation_collection; print_lists::Bool=false )
   println("number fixed: ",length(ic.fixed))
   println("number extinct: ",length(ic.extinct))
   println("fixed fraction: ",fixed_fraction(ic))
+  println("avg per generation count: ",average_innovations_per_gen(ic))
+  println("avg per generation heterozygosity: ",average_heterozygosity_per_gen(ic))
   println("avg time to fixation: ",average_time_to_fixation(ic))
   println("avg time to extinction: ",average_time_to_extinction(ic))
   println("avg fitness fixed: ",average_fitness_fixed(ic))
@@ -175,11 +209,13 @@ function average_time_to_extinction( innov_collection::innovation_collection )
     println("no extinct innovations")
     return -1.0
   end
+  #print("average_time_to_extinction:  ")
   sum = 0
   for i in innov_collection.extinct 
     sum += innov_collection.list[i].final_gen - innov_collection.list[i].start_gen
+    #println("id: ",innov_collection.list[i].identifier,"  time: ",(innov_collection.list[i].final_gen-innov_collection.list[i].start_gen),"  sum: ",sum)
   end
-  return Float64(sum-1)/length(innov_collection.extinct)
+  return Float64(sum)/length(innov_collection.extinct)
 end 
 
 function average_time_to_fixation( innov_collection::innovation_collection )
@@ -194,7 +230,7 @@ function average_time_to_fixation( innov_collection::innovation_collection )
   for i in innov_collection.fixed 
     sum += innov_collection.list[i].final_gen - innov_collection.list[i].start_gen
   end
-  return Float64(sum-1)/length(innov_collection.fixed)
+  return Float64(sum)/length(innov_collection.fixed)
 end 
 
 # Fraction of fixed innovations out of fixed plus extinct innovations
@@ -277,7 +313,6 @@ function count_adv_del_fixed( ic::innovation_collection )
   return count_adv, count_del
 end
 
-#=
 function average_innovations_per_gen( ic::innovation_collection )
   return ic.sum_counts/ic.sum_generations
 end
@@ -285,4 +320,3 @@ end
 function average_heterozygosity_per_gen( ic::innovation_collection )
   return ic.sum_heteroz/ic.sum_generations
 end
-=#
