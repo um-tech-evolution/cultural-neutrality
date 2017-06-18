@@ -1,4 +1,5 @@
 # A "sanity test" for innovation.jl and innovation_collection.jl
+using Distributions
 function test(N::Int64)
   id = 1
   ic = innovation_collection(N,1.0)
@@ -21,7 +22,7 @@ function test(N::Int64)
   return ic
 end
 
-# Tests some of the functionality of  innovation.jl and innovation_collection.jl
+# Tests some of the functionality of innovation_collection.jl under infinite sites
 function testall( N::Int64, ngens::Int64, mu::Float64; prob_ext::Float64=0.3, prob_fix::Float64=0.2 )
   ic = innovation_collection(N,1.0)
   i = 1
@@ -30,22 +31,26 @@ function testall( N::Int64, ngens::Int64, mu::Float64; prob_ext::Float64=0.3, pr
   done = false
   while !done && g < g_limit
     println("generation: ",g)
+    for index in ic.active
+      print("id: ",ic.list[index].identifier," sg:",ic.list[index].start_gen," freq:",ic.list[index].previous_allele_freq)
+      println(" sum_counts:",ic.list[index].sum_counts," sum_het:",ic.list[index].sum_heteroz)
+    end
     update_innovations!( ic, g, N )
-    if g <= ngens
-      for j = 1:N
-        r = rand()
-        if r < mu
-          println("generating innovation ",i)
-          ic_push!(ic,innovation(i,N,g,0.95+0.1*rand()))
-          i += 1
-        end
+    num_mutations = rand(Binomial(N,mu))
+    #println("g: ",g,"  num_mutations: ",num_mutations)
+    if g < ngens  # no burn_in for this test
+      for j in 1:num_mutations
+        fit = 0.50+rand()  # generate fitnesses with a wide range of fitnesses
+        println("generating innovation ",i," with fitness: ",fit)
+        ic_push!(ic,innovation(i,N,g,fit))
+        i += 1
       end
     end
     g += 1
-    if g == ngens
-      println("active: ",ic.active)
-    end
     done = (g > ngens) && length(ic.active) == 0
+    if done
+      println("final summary")
+    end
     print_summary( ic, print_lists=true )
   end
   ic
@@ -60,6 +65,7 @@ include("../src/NeutralCulturalEvolution.jl")
 N=5
 ngens=4
 mu=0.2
-test(N)
-println("=====================")
+#test(N)
+#println("=====================")
+srand(3)
 testall()

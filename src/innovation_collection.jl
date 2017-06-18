@@ -1,5 +1,5 @@
 export innovation_type, innovation,  
-    innovation_collection, ic_push!, update_innovations!, 
+    innovation_collection, ic_push!, update_innovations!, update_neutral, update_selected,
     print_summary, average_time_to_extinction, average_time_to_fixation, 
     fixed_fraction, average_fitness_fixed, average_fitness_extinct, average_fitness_all,
     average_innovations_per_gen, average_heterozygosity_per_gen
@@ -90,22 +90,23 @@ function fix_test( N::Int64, new_allele_freq::Int64 )
   return N == new_allele_freq
 end
 
-# Update all active innovations, and make some extinct and fixed
-# Called only by the infinite sites model.
-# This version is used only by infsites.jl.
+@doc """ function update_innovations!( )
+ Update all active innovations, and make some extinct and fixed
+ Called only by the infinite sites model.
+ This version is used only by infsites.jl.
+"""
 function update_innovations!( ic::innovation_collection, g::Int64, N::Int64 )
   if !ic.in_use 
     return
   end
+  #println("active: ",ic.active,"  fixed: ",ic.fixed,"  extinct: ",ic.extinct)
   for index in ic.active  # updates sites to the next generation
     #println("update innovations: id: ",ic.list[index].identifier,"  start gen: ",ic.list[index].start_gen) 
-    #new_allele_freq = update_selected( index, N, ic.list[index].history[end], ic.list[index].fitness_coefficient )
+    # update_selected does the equivalent of proportional selection
     new_allele_freq = update_selected( index, N, ic.list[index].previous_allele_freq, ic.list[index].fitness_coefficient )
-    #println("prev_allele_freq: ",ic.list[index].previous_allele_freq,"  new_allele_freq: ",new_allele_freq)
-    #ic_update!(ic,index,g,new_allele_freq)
-    #iupdate!( ic.list[index], ic.N, g, new_allele_freq )
+    #println("id: ",ic.list[index].identifier,"  prev_allele_freq: ",ic.list[index].previous_allele_freq,"  new_allele_freq: ",new_allele_freq)
     innov = ic.list[index]
-    if new_allele_freq > 0
+    if new_allele_freq > 0 && new_allele_freq < N
       innov.sum_counts += new_allele_freq
       innov.sum_heteroz += 1.0 - watterson_homozygosity([N-new_allele_freq, new_allele_freq])
     end
@@ -131,9 +132,11 @@ function update_innovations!( ic::innovation_collection, g::Int64, N::Int64 )
   end
 end
 
-# Update all active innovations, and make some extinct and fixed
-# This version is called by the infinite alleles model (either neutral_poplist.jl or nearly_neutral_poplist.jl).
-# popcounter is a dictionary that maps alleles to their frequencies in the current generation population
+@doc """ function update_innovations!( )
+ Update all active innovations, and make some extinct and fixed
+ This version is called by the infinite alleles model (either neutral_poplist.jl or nearly_neutral_poplist.jl).
+ popcounter is a dictionary that maps alleles to their frequencies in the current generation population
+"""
 function update_innovations!( ic::innovation_collection, g::Int64, N::Int64, popcounter::Dict{Int64,Int64}, fixation_test::Function=fix_test )
   if !ic.in_use 
     return
@@ -145,16 +148,37 @@ function update_innovations!( ic::innovation_collection, g::Int64, N::Int64, pop
       Base.pop!( ic.active,index)
       Base.push!( ic.extinct,index)
       ic.list[index].final_gen = g
-      #make_extinct!(ic,index,g)
     elseif new_allele_freq >= Int(ceil(ic.fix_minimum*N) )  # fixation
       Base.pop!( ic.active,index)
       Base.push!( ic.fixed,index)
       ic.list[index].final_gen = g
-      #make_fixed!(ic,index,g)
     end
   end
 end  
 
+@doc """ function update_neutral() 
+  Updates site according to the Wright-Fisher model of drift.  
+  Since mutation has already happened by the time a new site is established, there is no mutation.
+""" 
+function update_neutral( site::Int64, N::Int64, old_allele_freq::Int64 )
+  p = Float64(old_allele_freq)/N
+  new_allele_freq = rand(Binomial(N,p))
+  #println("update_neutral: ",site,"  N: ",N,"  new_allele_freq: ",new_allele_freq)
+  return new_allele_freq
+end 
+
+@doc """ function update_selected() 
+  Updates site according to the Wright-Fisher model of drift with selection.  
+  Since mutation has already happened by the time a new site is established, there is no mutation.
+  This function is called by update_innovations!() in innovation_collection.jl.
+
+""" 
+function update_selected( site::Int64, N::Int64, old_allele_freq::Int64, select_coef::Float64 )
+  p = min(1.0,(select_coef*Float64(old_allele_freq)/N))
+  new_allele_freq = rand(Binomial(N,p))
+  #println("update selected: site: ",site,"  old allele_freq: ",old_allele_freq,"  new allele_freq: ",new_allele_freq,"  sel coef: ",select_coef,"  p: ",p)
+  return new_allele_freq
+end  
 function N_inf_sites( ic::innovation_collection )
   if !ic.in_use 
     return
@@ -192,6 +216,9 @@ function print_summary( ic::innovation_collection; print_lists::Bool=false )
   println("number fixed: ",length(ic.fixed))
   println("number extinct: ",length(ic.extinct))
   println("fixed fraction: ",fixed_fraction(ic))
+  println("sum_counts: ",ic.sum_counts)
+  println("sum_heteroz: ",ic.sum_heteroz)
+  println("sum_gens: ",ic.sum_generations)
   println("avg per generation count: ",average_innovations_per_gen(ic))
   println("avg per generation heterozygosity: ",average_heterozygosity_per_gen(ic))
   println("avg time to fixation: ",average_time_to_fixation(ic))
@@ -290,6 +317,9 @@ function average_fitness_all( ic::innovation_collection )
   return sum/(length(ic.extinct) + length(ic.fixed))
 end
 
+@doc """ function count_adv_del_fixed( )
+  Counts the number of fixed innovations that are advantageous, and the number that are deleterious at the end of the run.
+"""
 function count_adv_del_fixed( ic::innovation_collection )
   #println("count_adv_del_fixed")
   if !ic.in_use 

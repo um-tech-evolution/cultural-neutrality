@@ -5,6 +5,11 @@ if length(ARGS) == 0
   simname = "../experiments/configs/in_example1"
 else
   simname = ARGS[1]
+  if length(ARGS) >= 2   # second command-line argument is random number seed
+    seed = parse(Int,ARGS[2])
+    println("seed: ",seed)
+    srand(seed)
+  end
 end
 include("$(simname).jl")
 println("simname: ",simname)

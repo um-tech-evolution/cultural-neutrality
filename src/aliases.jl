@@ -3,7 +3,7 @@ export Population, PopList, ConfigInt, Config, ConfigList, ConfigConfigList, Con
 using DataFrames
 using Distributions
 using DataStructures
-using RCall
+using RCall       # comment out if you get an error message about not being able to locate R installation
 
 typealias ConfigInt Int16     # Change to UInt8 if N > 127
 typealias Config Array{ConfigInt,1}   # A config
