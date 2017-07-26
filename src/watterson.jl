@@ -14,6 +14,9 @@ function watterson_homozygosity( allele_freqs::Config )
 end
 
 function watterson_homozygosity( allele_freqs::Population )
+  if length(allele_freqs) == 0
+    return 0.0   # Not sure that this is valid
+  end
   n = sum(allele_freqs)
   sum_a_sq = 0
   for a in allele_freqs

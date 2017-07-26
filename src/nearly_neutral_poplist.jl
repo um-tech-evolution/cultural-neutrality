@@ -30,7 +30,7 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
   #if ic.in_use
   #  println("fix minimum: ",ic.fix_minimum)
   #end
-  println("dfe: ",dfe)
+  #println("dfe: ",dfe)
   global fitness_table = Dict{Int64,Float64}()
   g_limit = 1000000  # upper limit of generations to wait for extinctions and fixations
   int_burn_in = Int(round(burn_in*N/N_mu+50.0))
@@ -71,6 +71,7 @@ function nearly_neutral_poplist( N::Int64, N_mu::Float64, ngens::Int64, dfe::Fun
     end
     new_pop = propsel( poplist[g-1], dfe, fitness_table )
     Base.push!( poplist, new_pop )
+    # TODO:  delete the next 3 lines and check that nothing is broken.
     if g >int_burn_in && g <= ngens + int_burn_in
       u = unique(new_pop)
     end
