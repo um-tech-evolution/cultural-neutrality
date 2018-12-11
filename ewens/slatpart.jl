@@ -15,82 +15,65 @@
 # Recursively, a configuaration [r_1, r_2, . . . , r_{K-1}, r_K] for N and K, corresponds to a configuration
 #   [r_1, r_2, . . . , r_{K-1}] for N-r_K and K-1.
 #
-# For a bottom up algorithm, a Configig is a list of integers.
+# For a bottom up algorithm, a Config is a list of integers.
 # We store configs as a list of lists of lists of configs:
 # Given N, K, r_K,  C[N][K][r_K] is a config (which is a list of length K)
+#
+# Example runs:
+# julia> ncfgs(8,3)
+#5-element Array{Array{Int8,1},1}:
+# Int8[2, 3, 3]
+# Int8[2, 2, 4]
+# Int8[1, 3, 4]
+# Int8[1, 2, 5]
+# Int8[1, 1, 6]
+#
+#julia> all_cfgs(4)
+#5-element Array{Array{Int8,1},1}:
+# Int8[4]
+# Int8[2, 2]
+# Int8[1, 3]
+# Int8[1, 1, 2]
+# Int8[1, 1, 1, 1]
 
 export cfgs, ncfgs, rcfgs, flatten, ConfigInt, Config, ConfigList, ConfigConfigList, ConfigConfigConfigList
-
+#include("../src/aliases")
 #=
-typealias ConfigInt Int8     # Change to UInt8 if N > 127
-#typealias ConfigInt Int128
-typealias Config Array{ConfigInt,1}   # A config
-typealias ConfigList Array{Array{ConfigInt,1},1}  # A list of configs correponding to N, K 
-typealias ConfigConfigList Array{Array{Array{ConfigInt,1},1},1}  # A list of lists of configs corresponding to N
-typealias ConfigConfigConfigList Array{Array{Array{Array{ConfigInt,1},1},1},1}  # Corresponds to C
+const ConfigInt  = Int8     # Change to UInt8 if N > 127
+#const ConfigInt = Int128
+const Config = Array{ConfigInt,1}   # A config
+const ConfigList = Array{Array{ConfigInt,1},1}  # A list of configs correponding to N, K 
+const ConfigConfigList = Array{Array{Array{ConfigInt,1},1},1}  # A list of lists of configs corresponding to N
+const ConfigConfigConfigList = Array{Array{Array{Array{ConfigInt,1},1},1},1}  # Corresponds to C
 =#
 
-#=
-@doc """ function gen_configs()
-Generate all configs for up to N = 8.
-Entered by hand for debugging purposes.
-"""
-function gen_configs()
-  C1K1 =  Config[ ConfigInt[1] ]    # for N=1, K=1
-  C1 = ConfigList[C1K1]    # for N=1
-  C = ConfigConfigList[C1]  # all configs
-  C2K1 =  Config[ ConfigInt[2] ]   # for N=2, K=1
-  C2K2 =  Config[ ConfigInt[1,1] ] # for N=2, K=2
-  C2 = ConfigList[C2K1,C2K2]     # for N=2
-  push!(C,C2)
-  C3K1 = Config[ ConfigInt[3] ]  # for N=3, K=1
-  C3K2 = Config[ ConfigInt[1,2] ]  # for N=3, K=2
-  C3K3 = Config[ ConfigInt[1,1,1] ]  # for N=3, K=3
-  C3 = ConfigList[C3K1,C3K2,C3K3]     # for N=3
-  push!(C,C3)
-  C4K1 = Config[ ConfigInt[4] ]  # for N=4, K=1
-  C4K2 = Config[ ConfigInt[2,2], ConfigInt[1,3] ]  # for N=4, K=2  
-  C4K3 = Config[ ConfigInt[1,1,2] ]  # for N=4, K=3
-  C4K4 = Config[ ConfigInt[1,1,1,1] ]  # for N=4, K=4
-  C4 = ConfigList[C4K1,C4K2,C4K3,C4K4]     # for N=4
-  push!(C,C4)
-  C5K1 = Config[ ConfigInt[5] ]  # for N=5, K=1
-  C5K2 = Config[ ConfigInt[2,3], ConfigInt[1,4]  ]  # for N=5, K=2  ?
-  C5K3 = Config[ ConfigInt[1,2,2], ConfigInt[1,1,3] ]  # for N=5, K=3
-  C5K4 = Config[ ConfigInt[1,1,1,2] ]  # for N=5, K=4
-  C5K5 = Config[ ConfigInt[1,1,1,1,1] ]  # for N=5, K=5
-  C5 = ConfigList[C5K1,C5K2,C5K3,C5K4,C5K5]     # for N=5
-  push!(C,C5)
-  C6K1 = Config[ ConfigInt[6] ]  # for N=6, K=1
-  C6K2 = Config[ ConfigInt[3,3], ConfigInt[2,4], ConfigInt[1,5] ]  # for N=6, K=2  ?
-  C6K3 = Config[ ConfigInt[2,2,2], ConfigInt[1,2,3], ConfigInt[1,1,4] ]  # for N=6, K=3
-  C6K4 = Config[ ConfigInt[1,1,2,2], ConfigInt[1,1,1,3] ]  # for N=6, K=4
-  C6K5 = Config[ ConfigInt[1,1,1,1,2] ]  # for N=6, K=5
-  C6K6 = Config[ ConfigInt[1,1,1,1,1,1] ]  # for N=6, K=6
-  C6 = ConfigList[C6K1,C6K2,C6K3,C6K4,C6K5,C6K6]     # for N=6
-  push!(C,C6)
-  C7K1 = Config[ ConfigInt[7] ]  # for N=7, K=1
-  C7K2 = Config[ ConfigInt[3,4], ConfigInt[2,5], ConfigInt[1,6] ]  # for N=7, K=2  ?
-  C7K3 = Config[ ConfigInt[2,2,3], ConfigInt[1,3,3], ConfigInt[1,2,4], ConfigInt[1,1,5] ]  # for N=7, K=3
-  C7K4 = Config[ ConfigInt[1,2,2,2],  ConfigInt[1,1,2,3],  ConfigInt[1,1,1,4] ]  # for N=7, K=4
-  C7K5 = Config[ ConfigInt[1,1,1,2,2], ConfigInt[1,1,1,1,3] ]  # for N=7, K=5
-  C7K6 = Config[ ConfigInt[1,1,1,1,1,2] ]  # for N=7, K=6
-  C7K7 = Config[ ConfigInt[1,1,1,1,1,1,1] ]  # for N=7, K=7
-  C7 = ConfigList[C7K1,C7K2,C7K3,C7K4,C7K5,C7K6,C7K7]     # for N=7
-  push!(C,C7)
-  C8K1 = Config[ ConfigInt[8] ]  # for N=8, K=1
-  C8K2 = Config[ ConfigInt[4,4], ConfigInt[3,5], ConfigInt[2,6], ConfigInt[1,7] ]  # for N=8, K=2  ?
-  C8K3 = Config[ ConfigInt[2,3,3], ConfigInt[2,2,4], ConfigInt[1,3,4], ConfigInt[1,2,5], ConfigInt[1,1,6] ]  # for N=8, K=3
-  C8K4 = Config[ ConfigInt[2,2,2,2],  ConfigInt[1,2,2,3], ConfigInt[1,1,3,3], ConfigInt[1,1,2,4], ConfigInt[1,1,1,5] ]  # for N=8, K=4
-  C8K5 = Config[ ConfigInt[1,1,2,2,2], ConfigInt[1,1,1,2,3], ConfigInt[1,1,1,1,4] ]  # for N=8, K=5
-  C8K6 = Config[ ConfigInt[1,1,1,1,2,2], ConfigInt[1,1,1,1,1,3] ]  # for N=8, K=6
-  C8K7 = Config[ ConfigInt[1,1,1,1,1,1,2] ]  # for N=8, K=7
-  C8K8 = Config[ ConfigInt[1,1,1,1,1,1,1,1] ]  # for N=8, K=8
-  C8 = ConfigList[C8K1,C8K2,C8K3,C8K4,C8K5,C8K6,C8K7,C8K8]     # for N=8
-  push!(C,C8)
-  return C
+# 
+function convert_config_to_Int64(c::Config)
+  map(x->convert(Int64,x),c)
 end
-=#
+
+function convert_config_list_to_Int64(cl::ConfigList)
+  map(convert_config_to_Int64, cl )
+end
+
+# Note:  moved configs generation "by hand" to the end of this file
+
+@doc """ 
+Returns a list of configs for all values of K.
+"""
+function all_cfgs( N::Int64 )
+  #result = Array{Int64,1}[]
+  result = Config[]
+  for K = 1:N
+    #cfgs = convert_config_list_to_Int64(ncfgs(N,K))
+    cfgs = ncfgs(N,K)
+    for c in cfgs
+      push!(result,c)
+    end
+    #println("K: ",K," cfgs: ",cfgs,"  result: ",result)
+  end
+  result
+end
 
 @doc """ function ncfgs( N::Int64, K::Int64 )
 Call rcfgs to Generate the configs for N and K recursively
@@ -240,3 +223,65 @@ function flatten( lst::Array{Array{Array{Int64,1},1},1})
   end
   result
 end
+
+#=
+@doc """ function gen_configs()
+Generate all configs for up to N = 8.
+Entered by hand for debugging purposes.
+"""
+function gen_configs()
+  C1K1 =  Config[ ConfigInt[1] ]    # for N=1, K=1
+  C1 = ConfigList[C1K1]    # for N=1
+  C = ConfigConfigList[C1]  # all configs
+  C2K1 =  Config[ ConfigInt[2] ]   # for N=2, K=1
+  C2K2 =  Config[ ConfigInt[1,1] ] # for N=2, K=2
+  C2 = ConfigList[C2K1,C2K2]     # for N=2
+  push!(C,C2)
+  C3K1 = Config[ ConfigInt[3] ]  # for N=3, K=1
+  C3K2 = Config[ ConfigInt[1,2] ]  # for N=3, K=2
+  C3K3 = Config[ ConfigInt[1,1,1] ]  # for N=3, K=3
+  C3 = ConfigList[C3K1,C3K2,C3K3]     # for N=3
+  push!(C,C3)
+  C4K1 = Config[ ConfigInt[4] ]  # for N=4, K=1
+  C4K2 = Config[ ConfigInt[2,2], ConfigInt[1,3] ]  # for N=4, K=2  
+  C4K3 = Config[ ConfigInt[1,1,2] ]  # for N=4, K=3
+  C4K4 = Config[ ConfigInt[1,1,1,1] ]  # for N=4, K=4
+  C4 = ConfigList[C4K1,C4K2,C4K3,C4K4]     # for N=4
+  push!(C,C4)
+  C5K1 = Config[ ConfigInt[5] ]  # for N=5, K=1
+  C5K2 = Config[ ConfigInt[2,3], ConfigInt[1,4]  ]  # for N=5, K=2  ?
+  C5K3 = Config[ ConfigInt[1,2,2], ConfigInt[1,1,3] ]  # for N=5, K=3
+  C5K4 = Config[ ConfigInt[1,1,1,2] ]  # for N=5, K=4
+  C5K5 = Config[ ConfigInt[1,1,1,1,1] ]  # for N=5, K=5
+  C5 = ConfigList[C5K1,C5K2,C5K3,C5K4,C5K5]     # for N=5
+  push!(C,C5)
+  C6K1 = Config[ ConfigInt[6] ]  # for N=6, K=1
+  C6K2 = Config[ ConfigInt[3,3], ConfigInt[2,4], ConfigInt[1,5] ]  # for N=6, K=2  ?
+  C6K3 = Config[ ConfigInt[2,2,2], ConfigInt[1,2,3], ConfigInt[1,1,4] ]  # for N=6, K=3
+  C6K4 = Config[ ConfigInt[1,1,2,2], ConfigInt[1,1,1,3] ]  # for N=6, K=4
+  C6K5 = Config[ ConfigInt[1,1,1,1,2] ]  # for N=6, K=5
+  C6K6 = Config[ ConfigInt[1,1,1,1,1,1] ]  # for N=6, K=6
+  C6 = ConfigList[C6K1,C6K2,C6K3,C6K4,C6K5,C6K6]     # for N=6
+  push!(C,C6)
+  C7K1 = Config[ ConfigInt[7] ]  # for N=7, K=1
+  C7K2 = Config[ ConfigInt[3,4], ConfigInt[2,5], ConfigInt[1,6] ]  # for N=7, K=2  ?
+  C7K3 = Config[ ConfigInt[2,2,3], ConfigInt[1,3,3], ConfigInt[1,2,4], ConfigInt[1,1,5] ]  # for N=7, K=3
+  C7K4 = Config[ ConfigInt[1,2,2,2],  ConfigInt[1,1,2,3],  ConfigInt[1,1,1,4] ]  # for N=7, K=4
+  C7K5 = Config[ ConfigInt[1,1,1,2,2], ConfigInt[1,1,1,1,3] ]  # for N=7, K=5
+  C7K6 = Config[ ConfigInt[1,1,1,1,1,2] ]  # for N=7, K=6
+  C7K7 = Config[ ConfigInt[1,1,1,1,1,1,1] ]  # for N=7, K=7
+  C7 = ConfigList[C7K1,C7K2,C7K3,C7K4,C7K5,C7K6,C7K7]     # for N=7
+  push!(C,C7)
+  C8K1 = Config[ ConfigInt[8] ]  # for N=8, K=1
+  C8K2 = Config[ ConfigInt[4,4], ConfigInt[3,5], ConfigInt[2,6], ConfigInt[1,7] ]  # for N=8, K=2  ?
+  C8K3 = Config[ ConfigInt[2,3,3], ConfigInt[2,2,4], ConfigInt[1,3,4], ConfigInt[1,2,5], ConfigInt[1,1,6] ]  # for N=8, K=3
+  C8K4 = Config[ ConfigInt[2,2,2,2],  ConfigInt[1,2,2,3], ConfigInt[1,1,3,3], ConfigInt[1,1,2,4], ConfigInt[1,1,1,5] ]  # for N=8, K=4
+  C8K5 = Config[ ConfigInt[1,1,2,2,2], ConfigInt[1,1,1,2,3], ConfigInt[1,1,1,1,4] ]  # for N=8, K=5
+  C8K6 = Config[ ConfigInt[1,1,1,1,2,2], ConfigInt[1,1,1,1,1,3] ]  # for N=8, K=6
+  C8K7 = Config[ ConfigInt[1,1,1,1,1,1,2] ]  # for N=8, K=7
+  C8K8 = Config[ ConfigInt[1,1,1,1,1,1,1,1] ]  # for N=8, K=8
+  C8 = ConfigList[C8K1,C8K2,C8K3,C8K4,C8K5,C8K6,C8K7,C8K8]     # for N=8
+  push!(C,C8)
+  return C
+end
+=#

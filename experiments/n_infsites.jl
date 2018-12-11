@@ -1,4 +1,7 @@
 # Front-end for src/infsites.jl
+#As of December 2018 this doesn't work because site_collection.jl is missing.
+#The functionality has been moved to the nearly-neutral repository.
+
 include("../src/NeutralCulturalEvolution.jl")
 if length(ARGS) == 0
   #simname = "../experiments/nn_configs/nn_example1"
@@ -43,16 +46,18 @@ type infs_result_type
   average_fitness_extinct::Float64
   average_fitness_fixed::Float64
   average_fitness_all::Float64
+  stderr_innovations_per_gen::Float64
   average_innovations_per_gen::Float64
   average_heterozygosity_per_gen::Float64
+  stderr_heterozygosity_per_gen::Float64
   count_fixed_del::Int64
   count_fixed_adv::Int64
 end
 
 function infs_result( nn_simtype::Int64, N::Int64, N_mu::Float64, ngens::Int64,
-    burn_in::Float64=2.0, dfe::Function=dfe_neutral,
+    burn_in::Float64=2.0, dfe::Function=dfe_neutral, 
     dfe_str::AbstractString="neutral" )
-  tr = infs_result_type( nn_simtype, N, N_mu, ngens, burn_in, dfe, dfe_str, 0, 0, 0, 0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0,0 )
+  tr = infs_result_type( nn_simtype, N, N_mu, ngens, burn_in, dfe, dfe_str, 0, 0, 0, 0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0 )
   tr
 end
 
@@ -85,7 +90,9 @@ function print_infs_result( tr::infs_result_type )
   println("average fitness_fixed: ", tr.average_fitness_fixed)
   println("average fitness_all: ", tr.average_fitness_all)
   println("avg per generation count: ",tr.average_innovations_per_gen)
+  println("stderr per generation count: ",tr.stderr_innovations_per_gen)
   println("avg per generation heterozygosity: ",tr.average_heterozygosity_per_gen)
+  println("stderr per generation heterozygosity: ",tr.stderr_heterozygosity_per_gen)
   println()
 end
 
@@ -129,7 +136,8 @@ end
 
 function run_trial( tr::infs_result_type )
   if tr.nn_simtype == 2
-    ic = inf_sites( tr.N, tr.N_mu, tr.ngens, dfe=tr.dfe, burn_in=tr.burn_in )
+    #ic = inf_sites( tr.N, tr.N_mu, tr.ngens, dfe=tr.dfe, burn_in=tr.burn_in )
+    ic = inf_sites( tr.N, tr.N_mu, tr.ngens, dfe=tr.dfe )
     tr.number_extinctions = length(ic.extinct)
     tr.number_fixations = length(ic.fixed)
     tr.count_fixed_del = ic.count_fixed_del
@@ -139,8 +147,8 @@ function run_trial( tr::infs_result_type )
     tr.average_fitness_extinct = average_fitness_extinct(ic)
     tr.average_fitness_fixed = average_fitness_fixed(ic)
     tr.average_fitness_all = average_fitness_all(ic)
-    tr.average_innovations_per_gen = average_innovations_per_gen(ic)
-    tr.average_heterozygosity_per_gen = average_heterozygosity_per_gen(ic)
+    (tr.average_innovations_per_gen, tr.stderr_innovations_per_gen) = innovations_per_gen(ic)
+    (tr.average_heterozygosity_per_gen, tr.stderr_heterozygosity_per_gen) = heterozygosity_per_gen(ic)
     return tr
   else
     println("nn_simtype ",nn_simtype," not implemented")
@@ -188,7 +196,9 @@ function writeheader(stream::IO, N_list::Vector{Int64},
     "ave_fixed_selcoef", 
     "ave_all_selcoef",
     "ave_innov_count",
+    "stderr_innov_count",
     "ave_heteroz",
+    "stderr_heteroz",
   ] 
   line = join(vcat( first_heads, mid_heads, last_heads), ",")
   write(stream, line, "\n")
@@ -216,7 +226,9 @@ function writerow(stream::IO, trial::Int64, tr::infs_result_type; mu_list_flag::
       tr.average_fitness_fixed,
       tr.average_fitness_all,
       tr.average_innovations_per_gen,
-      tr.average_heterozygosity_per_gen
+      tr.stderr_innovations_per_gen,
+      tr.average_heterozygosity_per_gen,
+      tr.stderr_heterozygosity_per_gen
     ]
   else 
     println("Error:  nn_simtype must be 2 for inf sites.")

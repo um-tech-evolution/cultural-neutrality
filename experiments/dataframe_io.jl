@@ -1,4 +1,4 @@
-#using DataFrames
+using DataFrames
 export read_header_lines, write_data_frame, write_dataframe, read_headers
 
 function read_header_lines( stream::IO )

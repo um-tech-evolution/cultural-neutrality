@@ -142,7 +142,7 @@ function w_alpha( allele_freqs::Config )
   alpha
 end
 
-typealias w_homoz watterson_homozygosity
+const w_homoz = watterson_homozygosity
   
 function p_1_4(cfg)
   p_homozygosity(cfg,1.4)

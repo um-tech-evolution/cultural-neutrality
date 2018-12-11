@@ -1,3 +1,4 @@
+# Example run:  julia n_neutral.jl examples/nn_example1
 export dfe_fitness, fitness, nearly_neutral_poplist, dfe_deleterious,dfe_advantageous, dfe_mixed, 
     dfe_mod, dfe_neutral, dfe_fixed
 

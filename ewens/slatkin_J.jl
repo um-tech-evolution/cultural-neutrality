@@ -1,10 +1,13 @@
 export Rsamples, slat_sample, slatkin_sample, slatkin_exact, watterson_sample, watterson_exact, watterson_significance
 
 # isless is aliased to < by default
-typealias islessequal <=
-typealias isgreater >
-typealias isgreaterequal >=
-typealias configs_type Array{Array{Array{Array{Int8,1},1},1},1}
+#typealias islessequal <=
+#typealias isgreater >
+#typealias isgreaterequal >=
+const islessequal = <=
+const isgreater = >
+const isgreaterequal = >=
+#typealias configs_type Array{Array{Array{Array{Int8,1},1},1},1}
 #typealias ConfigList Array{Array{Int8,1},1}
 
 immutable rsamples_result

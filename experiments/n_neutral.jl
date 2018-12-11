@@ -1,3 +1,4 @@
+# Example run:  [wright@pardosa experiments]$ julia n_neutral.jl examples/nn_example1
 # Front end for src/nearly_neutral_poplist.jl
 include("../src/NeutralCulturalEvolution.jl")
 if length(ARGS) == 0
